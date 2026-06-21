@@ -13,6 +13,14 @@ The first public release of PromptCraft AI.
 - Standard and Premium Expert generation modes
 - Multiple prompt variants for Premium users
 - Improve, shorten, expand, translate and regenerate actions
+- Simple, Advanced and Premium-only Expert difficulty levels
+- Short, Detailed, Professional and Expert response styles
+- Create and Optimize workflows
+- Professional software-engineering prompt structures for Claude Code, Codex
+  and Cursor
+- Thirteen developer templates, including refactoring, debugging, FastAPI,
+  Next.js, React, SQL and Telegram applications
+- Saved generation preferences and bilingual Prompt of the Day
 
 ### Library and productivity
 

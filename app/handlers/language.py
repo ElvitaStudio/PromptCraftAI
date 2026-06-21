@@ -3,7 +3,7 @@ from aiogram.types import CallbackQuery, Message
 
 from app.catalog import LANGUAGES, tr
 from app.database import Database
-from app.keyboards import categories_keyboard
+from app.keyboards import workflow_keyboard
 
 
 router = Router(name="language")
@@ -23,9 +23,12 @@ async def select_language(
         await callback.message.answer(
             tr(
                 language,
-                "✅ Язык сохранён.\n\n🧩 Выберите категорию:",
-                "✅ Language saved.\n\n🧩 Choose a category:",
+                "✅ Язык сохранён.\n\n🚀 Что вы хотите сделать?",
+                "✅ Language saved.\n\n🚀 What would you like to do?",
             ),
-            reply_markup=categories_keyboard(language),
+            reply_markup=workflow_keyboard(
+                language,
+                has_saved_settings=True,
+            ),
         )
     await callback.answer()

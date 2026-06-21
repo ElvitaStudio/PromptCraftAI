@@ -9,6 +9,12 @@ from pathlib import Path
 import aiosqlite
 
 from app.plans import FREE, PREMIUM, PRO, VALID_PLANS, get_plan_limits
+from app.prompt_profiles import (
+    DIFFICULTIES,
+    RESPONSE_STYLES,
+    WORKFLOWS,
+    validate_profile,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +27,11 @@ class User:
     premium_until: str | None = None
     plan_until: str | None = None
     is_blocked: bool = False
+    last_category: str = "text"
+    last_target_ai: str = "chatgpt"
+    last_difficulty: str = "simple"
+    last_response_style: str = "professional"
+    last_workflow: str = "create"
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,6 +178,11 @@ class Database:
                     plan TEXT NOT NULL DEFAULT 'free', plan_until TEXT,
                     referred_by INTEGER, premium_until TEXT,
                     is_blocked INTEGER NOT NULL DEFAULT 0,
+                    last_category TEXT NOT NULL DEFAULT 'text',
+                    last_target_ai TEXT NOT NULL DEFAULT 'chatgpt',
+                    last_difficulty TEXT NOT NULL DEFAULT 'simple',
+                    last_response_style TEXT NOT NULL DEFAULT 'professional',
+                    last_workflow TEXT NOT NULL DEFAULT 'create',
                     created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
                     FOREIGN KEY (referred_by) REFERENCES users(id)
                 );
@@ -225,17 +241,37 @@ class Database:
                 );
                 """
             )
-            columns = {
+            prompt_columns = {
                 row[1]
                 for row in await (
                     await db.execute("PRAGMA table_info(prompts)")
                 ).fetchall()
             }
-            if "language" not in columns:
+            if "language" not in prompt_columns:
                 await db.execute(
                     "ALTER TABLE prompts ADD COLUMN "
                     "language TEXT NOT NULL DEFAULT 'ru'"
                 )
+            user_columns = {
+                row[1]
+                for row in await (
+                    await db.execute("PRAGMA table_info(users)")
+                ).fetchall()
+            }
+            preference_columns = {
+                "last_category": "TEXT NOT NULL DEFAULT 'text'",
+                "last_target_ai": "TEXT NOT NULL DEFAULT 'chatgpt'",
+                "last_difficulty": "TEXT NOT NULL DEFAULT 'simple'",
+                "last_response_style": (
+                    "TEXT NOT NULL DEFAULT 'professional'"
+                ),
+                "last_workflow": "TEXT NOT NULL DEFAULT 'create'",
+            }
+            for name, definition in preference_columns.items():
+                if name not in user_columns:
+                    await db.execute(
+                        f"ALTER TABLE users ADD COLUMN {name} {definition}"
+                    )
             await db.commit()
 
     @asynccontextmanager
@@ -293,6 +329,11 @@ class Database:
             language=row["language"], referred_by=row["referred_by"],
             premium_until=row["premium_until"], plan_until=row["plan_until"],
             is_blocked=bool(row["is_blocked"]),
+            last_category=row["last_category"],
+            last_target_ai=row["last_target_ai"],
+            last_difficulty=row["last_difficulty"],
+            last_response_style=row["last_response_style"],
+            last_workflow=row["last_workflow"],
         )
 
     async def register_user(
@@ -390,6 +431,56 @@ class Database:
             await db.execute(
                 "UPDATE users SET language=?, updated_at=? WHERE telegram_id=?",
                 (language, self._now(), telegram_id),
+            )
+            await db.commit()
+
+    async def update_user_preferences(
+        self,
+        telegram_id: int,
+        *,
+        category: str | None = None,
+        target_ai: str | None = None,
+        difficulty: str | None = None,
+        response_style: str | None = None,
+        workflow: str | None = None,
+    ) -> None:
+        user = await self.get_user_by_telegram_id(telegram_id)
+        if user is None:
+            raise ValueError("User not found")
+        values = {
+            "last_category": category or user.last_category,
+            "last_target_ai": target_ai or user.last_target_ai,
+            "last_difficulty": difficulty or user.last_difficulty,
+            "last_response_style": response_style or user.last_response_style,
+            "last_workflow": workflow or user.last_workflow,
+        }
+        validate_profile(
+            values["last_category"],
+            values["last_target_ai"],
+            values["last_difficulty"],
+            values["last_response_style"],
+            values["last_workflow"],
+        )
+        if values["last_difficulty"] not in DIFFICULTIES:
+            raise ValueError("Unsupported difficulty")
+        if values["last_response_style"] not in RESPONSE_STYLES:
+            raise ValueError("Unsupported response style")
+        if values["last_workflow"] not in WORKFLOWS:
+            raise ValueError("Unsupported workflow")
+        async with self._connect() as db:
+            await db.execute(
+                "UPDATE users SET last_category=?, last_target_ai=?, "
+                "last_difficulty=?, last_response_style=?, last_workflow=?, "
+                "updated_at=? WHERE telegram_id=?",
+                (
+                    values["last_category"],
+                    values["last_target_ai"],
+                    values["last_difficulty"],
+                    values["last_response_style"],
+                    values["last_workflow"],
+                    self._now(),
+                    telegram_id,
+                ),
             )
             await db.commit()
 

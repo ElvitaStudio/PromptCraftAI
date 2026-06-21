@@ -1,6 +1,7 @@
 from openai import AsyncOpenAI
 
 from app.catalog import AI_MODELS, CATEGORIES
+from app.prompt_engineering import build_generation_instructions
 
 
 class OpenAIService:
@@ -16,29 +17,49 @@ class OpenAIService:
         language: str,
         expert: bool = False,
         variants: int = 1,
+        difficulty: str | None = None,
+        response_style: str = "professional",
+        workflow: str = "create",
     ) -> str:
         if category not in CATEGORIES or target_ai not in AI_MODELS:
             raise ValueError("Unsupported category or AI")
         if language not in {"ru", "en"}:
             raise ValueError("Unsupported language")
         variants = max(1, min(variants, 3))
-        output_language = "English" if language == "en" else "Russian"
-        mode = (
-            "Use Expert mode with role, context, constraints, output schema, "
-            "quality criteria and edge cases."
-            if expert
-            else "Create a clear, practical, production-ready prompt."
+        selected_difficulty = difficulty or (
+            "expert" if expert else "simple"
         )
-        instructions = f"""
-You are PromptCraft AI, a senior prompt engineer.
-Create a prompt for {AI_MODELS[target_ai]} in category
-{CATEGORIES[category]["en"]}. Write it in {output_language}.
-{mode}
-Generate {variants} distinct variant(s). Preserve the user's intent.
-Never answer the task itself. Return only the ready-to-copy prompt.
-For multiple variants, label them clearly in the selected language.
-""".strip()
+        instructions = build_generation_instructions(
+            category,
+            target_ai,
+            language,
+            selected_difficulty,
+            response_style,
+            variants,
+            workflow,
+        )
         return await self._generate(instructions, task)
+
+    async def optimize_prompt(
+        self,
+        prompt: str,
+        category: str,
+        target_ai: str,
+        language: str,
+        difficulty: str = "advanced",
+        response_style: str = "professional",
+        variants: int = 1,
+    ) -> str:
+        return await self.generate_prompt(
+            task=prompt,
+            category=category,
+            target_ai=target_ai,
+            language=language,
+            variants=variants,
+            difficulty=difficulty,
+            response_style=response_style,
+            workflow="optimize",
+        )
 
     async def improve_prompt(
         self,

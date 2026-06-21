@@ -4,17 +4,20 @@ from aiogram.filters.command import CommandObject
 from aiogram.types import Message
 
 from app.catalog import tr
+from app.daily_prompts import prompt_of_the_day
 from app.database import Database
 from app.history import history_chunks
 from app.keyboards import (
-    categories_keyboard,
     favorites_keyboard,
     language_keyboard,
     premium_keyboard,
+    prompt_actions_keyboard,
     templates_keyboard,
+    workflow_keyboard,
 )
 from app.middlewares import telegram_profile
 from app.plans import PREMIUM, get_plan_limits
+from app.presentation import prompt_result_chunks
 from app.referrals import (
     REFERRAL_REWARD_DAYS,
     build_referral_link,
@@ -51,10 +54,13 @@ async def start_command(
     await message.answer(
         tr(
             result.user.language,
-            "🚀 Добро пожаловать в PromptCraft AI!\n\nВыберите категорию:",
-            "🚀 Welcome to PromptCraft AI!\n\nChoose a category:",
+            "🚀 Добро пожаловать в PromptCraft AI!\n\nЧто вы хотите сделать?",
+            "🚀 Welcome to PromptCraft AI!\n\nWhat would you like to do?",
         ),
-        reply_markup=categories_keyboard(result.user.language),
+        reply_markup=workflow_keyboard(
+            result.user.language,
+            has_saved_settings=True,
+        ),
     )
 
 
@@ -68,8 +74,15 @@ async def new_prompt(message: Message, db: Database) -> None:
         )
         return
     await message.answer(
-        tr(user.language, "🧩 Выберите категорию:", "🧩 Choose a category:"),
-        reply_markup=categories_keyboard(user.language),
+        tr(
+            user.language,
+            "🚀 Что вы хотите сделать?",
+            "🚀 What would you like to do?",
+        ),
+        reply_markup=workflow_keyboard(
+            user.language,
+            has_saved_settings=True,
+        ),
     )
 
 
@@ -91,10 +104,12 @@ async def help_command(message: Message, db: Database) -> None:
             "Команды:\n/new — новый промпт\n/history — история\n"
             "/limits — лимиты\n/premium — тарифы\n/invite — рефералы\n"
             "/templates — шаблоны\n/favorites — избранное\n"
+            "/daily — промпт дня\n"
             "/language — язык",
             "Commands:\n/new — new prompt\n/history — history\n"
             "/limits — limits\n/premium — plans\n/invite — referrals\n"
             "/templates — templates\n/favorites — favorites\n"
+            "/daily — prompt of the day\n"
             "/language — language",
         )
     )
@@ -209,3 +224,31 @@ async def favorites_command(message: Message, db: Database) -> None:
             language,
         ),
     )
+
+
+@router.message(Command("daily"))
+async def daily_prompt_command(message: Message, db: Database) -> None:
+    user = await db.get_user_by_telegram_id(message.from_user.id)
+    if not user:
+        return
+    language = user.language or "ru"
+    prompt = prompt_of_the_day(language)
+    prompt_id = await db.save_prompt(
+        user.id,
+        "text",
+        "chatgpt",
+        "Prompt of the Day",
+        prompt,
+        "daily",
+        language,
+    )
+    chunks = prompt_result_chunks(prompt, language)
+    for index, chunk in enumerate(chunks):
+        await message.answer(
+            chunk,
+            reply_markup=(
+                prompt_actions_keyboard(prompt_id, language)
+                if index == len(chunks) - 1
+                else None
+            ),
+        )

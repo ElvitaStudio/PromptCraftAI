@@ -15,6 +15,7 @@ async def set_commands(bot: Bot) -> None:
             BotCommand(command="history", description="Prompt history"),
             BotCommand(command="templates", description="Templates"),
             BotCommand(command="favorites", description="Favorites"),
+            BotCommand(command="daily", description="Prompt of the Day"),
             BotCommand(command="limits", description="My limits"),
             BotCommand(command="premium", description="Plans"),
             BotCommand(command="invite", description="Invite a friend"),

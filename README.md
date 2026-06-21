@@ -35,6 +35,14 @@ result you need, and receive a polished prompt in Russian or English.
   study tasks
 - Prompt improvement, shortening, expansion, translation and alternative
   variants
+- Simple, Advanced and Premium-only Expert difficulty levels
+- Short, Detailed, Professional and Expert response styles
+- Create Prompt and Optimize My Prompt workflows
+- Professional coding prompts for Claude Code, Codex and Cursor
+- Dedicated developer modes for refactoring, debugging, architecture, review,
+  tests, documentation and popular stacks
+- Saved AI, category, difficulty and response-style preferences
+- Bilingual Prompt of the Day
 - Ready-made prompt templates
 - Favorite prompts
 - Plan-based prompt history

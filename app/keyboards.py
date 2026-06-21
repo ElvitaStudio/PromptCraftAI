@@ -1,6 +1,8 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.catalog import AI_MODELS, CATEGORIES, LANGUAGES
+from app.programmer_templates import PROGRAMMER_TEMPLATES
+from app.prompt_profiles import DIFFICULTIES, RESPONSE_STYLES
 from app.templates import TEMPLATE_GROUPS, TEMPLATES, templates_for_group
 
 PAYMENT_CALLBACK_PREFIX = "payment"
@@ -20,14 +22,83 @@ def language_keyboard() -> InlineKeyboardMarkup:
     )
 
 
-def categories_keyboard(language: str) -> InlineKeyboardMarkup:
+def workflow_keyboard(
+    language: str,
+    has_saved_settings: bool = False,
+) -> InlineKeyboardMarkup:
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=(
+                    "✍ Создать промпт"
+                    if language == "ru"
+                    else "✍ Create Prompt"
+                ),
+                callback_data="workflow:create",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=(
+                    "🔧 Улучшить мой промпт"
+                    if language == "ru"
+                    else "🔧 Optimize My Prompt"
+                ),
+                callback_data="workflow:optimize",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=(
+                    "🔥 Промпт дня"
+                    if language == "ru"
+                    else "🔥 Prompt of the Day"
+                ),
+                callback_data="nav:daily",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text="📚 Шаблоны" if language == "ru" else "📚 Templates",
+                callback_data="nav:templates",
+            ),
+            InlineKeyboardButton(
+                text="⭐ Избранное" if language == "ru" else "⭐ Favorites",
+                callback_data="nav:favorites",
+            ),
+        ],
+    ]
+    if has_saved_settings:
+        rows.insert(
+            2,
+            [
+                InlineKeyboardButton(
+                    text=(
+                        "⚡ Последние настройки"
+                        if language == "ru"
+                        else "⚡ Last settings"
+                    ),
+                    callback_data="settings:last",
+                )
+            ],
+        )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def categories_keyboard(
+    language: str,
+    selected: str | None = None,
+) -> InlineKeyboardMarkup:
     rows = []
     items = list(CATEGORIES.items())
     for index in range(0, len(items), 2):
         rows.append(
             [
                 InlineKeyboardButton(
-                    text=labels.get(language, labels["ru"]),
+                    text=(
+                        ("✓ " if code == selected else "")
+                        + labels.get(language, labels["ru"])
+                    ),
                     callback_data=f"category:{code}",
                 )
                 for code, labels in items[index:index + 2]
@@ -36,10 +107,13 @@ def categories_keyboard(language: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def ai_models_keyboard(category: str) -> InlineKeyboardMarkup:
+def ai_models_keyboard(
+    category: str,
+    selected: str | None = None,
+) -> InlineKeyboardMarkup:
     buttons = [
         InlineKeyboardButton(
-            text=name,
+            text=("✓ " if code == selected else "") + name,
             callback_data=f"ai:{category}:{code}",
         )
         for code, name in AI_MODELS.items()
@@ -54,17 +128,24 @@ def ai_models_keyboard(category: str) -> InlineKeyboardMarkup:
 def mode_keyboard(
     category: str,
     target_ai: str,
+    language: str = "en",
 ) -> InlineKeyboardMarkup:
     prefix = f"mode:{category}:{target_ai}"
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="⚡ Standard",
-                    callback_data=f"{prefix}:standard",
+                    text=DIFFICULTIES["simple"][language],
+                    callback_data=f"{prefix}:simple",
                 ),
                 InlineKeyboardButton(
-                    text="🧠 Expert",
+                    text=DIFFICULTIES["advanced"][language],
+                    callback_data=f"{prefix}:advanced",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text=DIFFICULTIES["expert"][language],
                     callback_data=f"{prefix}:expert",
                 ),
             ],
@@ -76,6 +157,51 @@ def mode_keyboard(
             ],
         ]
     )
+
+
+def response_style_keyboard(
+    category: str,
+    target_ai: str,
+    language: str,
+) -> InlineKeyboardMarkup:
+    prefix = f"style:{category}:{target_ai}"
+    items = list(RESPONSE_STYLES.items())
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=labels[language],
+                    callback_data=f"{prefix}:{code}",
+                )
+                for code, labels in items[index:index + 2]
+            ]
+            for index in range(0, len(items), 2)
+        ]
+    )
+
+
+def programmer_modes_keyboard(
+    language: str,
+) -> InlineKeyboardMarkup:
+    buttons = [
+        InlineKeyboardButton(
+            text=item.title(language),
+            callback_data=f"devmode:{item.code}",
+        )
+        for item in PROGRAMMER_TEMPLATES.values()
+    ]
+    rows = [buttons[index:index + 2] for index in range(0, len(buttons), 2)]
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text=(
+                    "Пропустить →" if language == "ru" else "Skip →"
+                ),
+                callback_data="devmode:skip",
+            )
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def prompt_actions_keyboard(
