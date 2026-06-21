@@ -25,6 +25,7 @@ def dashboard_text(stats: AdminStatistics) -> str:
         f"🆓 Free: {stats.free_users}\n"
         f"⭐ Pro: {stats.pro_users}\n"
         f"👑 Premium: {stats.premium_users}\n"
+        f"💎 Premium Plus: {stats.premium_plus_users}\n"
         f"🆕 Новых за 24 часа: {stats.new_users_24h}\n"
         f"💫 Доход: {stats.revenue_stars} Stars\n"
         f"⭐ Продаж Pro: {stats.pro_sales}\n"
@@ -52,12 +53,13 @@ def user_button_text(index: int, user: AdminUser) -> str:
 
 def user_card_text(user: AdminUser) -> str:
     username = f"@{user.username}" if user.username else "—"
+    plan_name = user.plan.replace("_", " ").title()
     return (
         f"👤 {user.display_name}\n"
         f"🆔 Telegram ID: {user.telegram_id}\n"
         f"📎 Username: {username}"
         f"\n🌐 Язык: {user.language or '—'}\n"
-        f"🎖 Тариф: {user.plan.title()}\n"
+        f"🎖 Тариф: {plan_name}\n"
         f"⏳ Plan until: {_date(user.plan_until)}\n"
         f"🎁 Referral Premium: {_date(user.premium_until)}\n"
         f"🚫 Заблокирован: {'да' if user.is_blocked else 'нет'}\n"

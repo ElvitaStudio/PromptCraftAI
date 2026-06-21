@@ -12,7 +12,7 @@ from app.keyboards import (
     settings_keyboard,
     settings_styles_keyboard,
 )
-from app.plans import PREMIUM
+from app.plans import has_premium_features
 from app.prompt_profiles import DIFFICULTIES, RESPONSE_STYLES
 
 
@@ -151,7 +151,7 @@ async def save_preference(callback: CallbackQuery, db: Database) -> None:
     }:
         kwargs["response_style"] = value
     elif kind == "difficulty" and value in DIFFICULTIES:
-        if value == "expert" and user.plan != PREMIUM:
+        if value == "expert" and not has_premium_features(user.plan):
             await callback.answer(
                 tr(
                     language,

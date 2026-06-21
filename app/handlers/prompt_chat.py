@@ -11,7 +11,7 @@ from aiogram.types import CallbackQuery, Message
 from app.catalog import tr
 from app.database import Database
 from app.keyboards import prompt_actions_keyboard, prompt_chat_ai_keyboard
-from app.plans import PREMIUM, get_plan_limits
+from app.plans import get_plan_limits, has_premium_features
 from app.presentation import prompt_result_chunks
 from app.services.openai_service import OpenAIService
 
@@ -243,7 +243,7 @@ async def finish_prompt_chat(
         )
     )
     difficulty = user.last_difficulty
-    if difficulty == "expert" and user.plan != PREMIUM:
+    if difficulty == "expert" and not has_premium_features(user.plan):
         difficulty = "advanced"
     variants = get_plan_limits(user.plan).response_variants
     try:

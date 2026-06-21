@@ -23,7 +23,7 @@ from app.keyboards import (
     templates_keyboard,
     workflow_keyboard,
 )
-from app.plans import PREMIUM, get_plan_limits
+from app.plans import get_plan_limits, has_premium_features
 from app.programmer_templates import PROGRAMMER_TEMPLATES
 from app.presentation import prompt_result_chunks
 from app.prompt_profiles import (
@@ -103,7 +103,7 @@ async def _prepare_from_preferences(
     state: FSMContext,
 ) -> None:
     difficulty = user.last_difficulty
-    if difficulty == "expert" and user.plan != PREMIUM:
+    if difficulty == "expert" and not has_premium_features(user.plan):
         difficulty = "advanced"
     await state.set_state(PromptFlow.waiting_for_task)
     await state.update_data(
@@ -322,10 +322,12 @@ async def choose_template(
     await state.update_data(
         category=template.category,
         target_ai=template.target_ai,
-        difficulty="expert" if user.plan == PREMIUM else "advanced",
+        difficulty=(
+            "expert" if has_premium_features(user.plan) else "advanced"
+        ),
         response_style="professional",
         workflow="create",
-        expert=user.plan == PREMIUM,
+        expert=has_premium_features(user.plan),
         variants=get_plan_limits(user.plan).response_variants,
         template_code=template.code,
         template_structure=template.structure(user.language),
@@ -335,7 +337,9 @@ async def choose_template(
         user.telegram_id,
         category=template.category,
         target_ai=template.target_ai,
-        difficulty="expert" if user.plan == PREMIUM else "advanced",
+        difficulty=(
+            "expert" if has_premium_features(user.plan) else "advanced"
+        ),
         response_style="professional",
         workflow="create",
     )
@@ -400,7 +404,7 @@ async def choose_ai(
         await callback.answer("Access blocked", show_alert=True)
         return
     difficulty = user.last_difficulty
-    if difficulty == "expert" and user.plan != PREMIUM:
+    if difficulty == "expert" and not has_premium_features(user.plan):
         difficulty = "advanced"
     await state.set_state(PromptFlow.waiting_for_task)
     await state.update_data(
@@ -504,7 +508,10 @@ async def choose_mode(
     ):
         await callback.answer("Invalid mode", show_alert=True)
         return
-    if normalized_mode in {"expert", "variants"} and user.plan != PREMIUM:
+    if (
+        normalized_mode in {"expert", "variants"}
+        and not has_premium_features(user.plan)
+    ):
         await callback.answer(
             tr(
                 user.language or "ru",

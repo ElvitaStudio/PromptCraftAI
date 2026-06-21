@@ -59,6 +59,7 @@ def user_card_keyboard(
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [_button("🎁 +3 дня Premium", f"grant:extend:{suffix}")],
+            [_button("💎 Выдать Premium Plus", f"grant:premium_plus:{suffix}")],
             [_button("👑 Выдать Premium", f"grant:premium:{suffix}")],
             [_button("⭐ Выдать Pro", f"grant:pro:{suffix}")],
             [_button("🆓 Сбросить Free", f"grant:free:{suffix}")],

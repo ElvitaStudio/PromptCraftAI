@@ -85,6 +85,12 @@ def workflow_keyboard(
                 callback_data="promptchat:start",
             )
         ],
+        [
+            InlineKeyboardButton(
+                text="🤖 AI Assistants",
+                callback_data="assistants:menu",
+            )
+        ],
     ]
     if has_saved_settings:
         rows.insert(
@@ -373,6 +379,12 @@ def premium_keyboard(language: str = "en") -> InlineKeyboardMarkup:
                 InlineKeyboardButton(
                     text="👑 Premium — 399 Stars",
                     callback_data="payment:premium",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="💎 Premium Plus",
+                    callback_data="premium_plus:info",
                 )
             ],
             [

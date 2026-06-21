@@ -18,7 +18,7 @@ from app.admin_keyboards import (
 )
 from app.config import Settings
 from app.database import Database
-from app.plans import FREE, PREMIUM, PRO
+from app.plans import FREE, PREMIUM, PREMIUM_PLUS, PRO
 
 
 router = Router(name="admin")
@@ -156,7 +156,12 @@ async def admin_callback(
         else:
             await db.set_admin_user_plan(
                 user_id,
-                {"free": FREE, "pro": PRO, "premium": PREMIUM}[plan_action],
+                {
+                    "free": FREE,
+                    "pro": PRO,
+                    "premium": PREMIUM,
+                    "premium_plus": PREMIUM_PLUS,
+                }[plan_action],
             )
         await _show_user(callback.message, db, user_id, page, search)
     elif action in {"block", "unblock"}:

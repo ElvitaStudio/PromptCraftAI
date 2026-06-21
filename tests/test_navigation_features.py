@@ -96,6 +96,7 @@ class MainMenuTests(unittest.TestCase):
         self.assertIn("🔧 Optimize Prompt", en)
         self.assertIn("📜 History", en)
         self.assertIn("⚙️ Settings", en)
+        self.assertIn("🤖 AI Assistants", en)
 
 
 class HistoryPaginationTests(unittest.IsolatedAsyncioTestCase):
@@ -304,6 +305,7 @@ class PremiumSectionTests(unittest.TestCase):
         }
         self.assertIn("payment:pro", buttons)
         self.assertIn("payment:premium", buttons)
+        self.assertIn("premium_plus:info", buttons)
         self.assertEqual(get_plan_limits(PRO).response_variants, 2)
 
 

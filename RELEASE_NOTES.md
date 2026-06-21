@@ -40,6 +40,18 @@ The first public release of PromptCraft AI.
 - Professional output with architecture, testing, error handling, security,
   documentation and acceptance criteria
 
+### Premium Plus AI Workspace
+
+- New Premium Plus plan with a constant placeholder price
+- GPT, Claude and Gemini assistant menu
+- Multiple saved chats for each assistant
+- Persistent isolated context and message history
+- Search by title and message content
+- Chat continuation and deletion
+- GPT integration through the existing OpenAI configuration
+- Provider-ready Claude and Gemini services with localized safe stubs
+- Automatic SQLite migrations for assistant chats and messages
+
 ### Interface and settings
 
 - New bilingual inline main menu

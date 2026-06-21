@@ -8,7 +8,14 @@ from pathlib import Path
 
 import aiosqlite
 
-from app.plans import FREE, PREMIUM, PRO, VALID_PLANS, get_plan_limits
+from app.plans import (
+    FREE,
+    PREMIUM,
+    PREMIUM_PLUS,
+    PRO,
+    VALID_PLANS,
+    get_plan_limits,
+)
 from app.prompt_profiles import (
     DIFFICULTIES,
     EXPORT_FORMATS,
@@ -115,6 +122,25 @@ class BroadcastRecipient:
 
 
 @dataclass(frozen=True, slots=True)
+class AssistantChat:
+    id: int
+    user_id: int
+    assistant: str
+    title: str
+    created_at: str
+    updated_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class AssistantMessage:
+    id: int
+    chat_id: int
+    role: str
+    content: str
+    created_at: str
+
+
+@dataclass(frozen=True, slots=True)
 class AdminUser:
     user_id: int
     telegram_id: int
@@ -161,6 +187,7 @@ class AdminStatistics:
     premium_sales: int
     prompts_total: int
     prompts_today: int
+    premium_plus_users: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -277,6 +304,28 @@ class Database:
                 );
                 CREATE INDEX IF NOT EXISTS idx_news_language_created
                     ON news(language, created_at);
+                CREATE TABLE IF NOT EXISTS assistant_chats (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    assistant TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS idx_assistant_chats_user_model
+                    ON assistant_chats(user_id, assistant, updated_at);
+                CREATE TABLE IF NOT EXISTS assistant_messages (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id INTEGER NOT NULL,
+                    role TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (chat_id) REFERENCES assistant_chats(id)
+                        ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS idx_assistant_messages_chat
+                    ON assistant_messages(chat_id, id);
                 """
             )
             prompt_columns = {
@@ -914,8 +963,14 @@ class Database:
             include = (
                 audience == "all"
                 or (audience == "free" and user.plan == FREE)
-                or (audience == "paid" and user.plan in {PRO, PREMIUM})
-                or (audience == "premium" and user.plan == PREMIUM)
+                or (
+                    audience == "paid"
+                    and user.plan in {PRO, PREMIUM, PREMIUM_PLUS}
+                )
+                or (
+                    audience == "premium"
+                    and user.plan in {PREMIUM, PREMIUM_PLUS}
+                )
             )
             if include:
                 recipients.append(
@@ -964,6 +1019,183 @@ class Database:
             ).fetchall()
         return [NewsItem(**dict(row)) for row in rows]
 
+    @staticmethod
+    def _validate_assistant(assistant: str) -> None:
+        if assistant not in {"gpt", "claude", "gemini"}:
+            raise ValueError("Unsupported assistant")
+
+    async def create_assistant_chat(
+        self,
+        user_id: int,
+        assistant: str,
+        title: str,
+    ) -> AssistantChat:
+        self._validate_assistant(assistant)
+        now = self._now()
+        clean_title = title.strip()[:120] or "New chat"
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "INSERT INTO assistant_chats "
+                "(user_id, assistant, title, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (user_id, assistant, clean_title, now, now),
+            )
+            row = await (
+                await db.execute(
+                    "SELECT * FROM assistant_chats WHERE id=?",
+                    (cursor.lastrowid,),
+                )
+            ).fetchone()
+            await db.commit()
+        return AssistantChat(**dict(row))
+
+    async def get_assistant_chats(
+        self,
+        user_id: int,
+        assistant: str,
+        search: str | None = None,
+        limit: int = 50,
+    ) -> list[AssistantChat]:
+        self._validate_assistant(assistant)
+        where = "c.user_id=? AND c.assistant=?"
+        params: list[object] = [user_id, assistant]
+        if search:
+            where += (
+                " AND (LOWER(c.title) LIKE LOWER(?) OR EXISTS ("
+                "SELECT 1 FROM assistant_messages m "
+                "WHERE m.chat_id=c.id AND LOWER(m.content) LIKE LOWER(?)))"
+            )
+            token = f"%{search.strip()}%"
+            params.extend([token, token])
+        params.append(max(1, min(limit, 100)))
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            rows = await (
+                await db.execute(
+                    f"SELECT c.* FROM assistant_chats c WHERE {where} "
+                    "ORDER BY c.updated_at DESC, c.id DESC LIMIT ?",
+                    params,
+                )
+            ).fetchall()
+        return [AssistantChat(**dict(row)) for row in rows]
+
+    async def get_assistant_chat(
+        self,
+        chat_id: int,
+        user_id: int,
+        assistant: str,
+    ) -> AssistantChat | None:
+        self._validate_assistant(assistant)
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            row = await (
+                await db.execute(
+                    "SELECT * FROM assistant_chats "
+                    "WHERE id=? AND user_id=? AND assistant=?",
+                    (chat_id, user_id, assistant),
+                )
+            ).fetchone()
+        return AssistantChat(**dict(row)) if row else None
+
+    async def add_assistant_message(
+        self,
+        chat_id: int,
+        user_id: int,
+        assistant: str,
+        role: str,
+        content: str,
+    ) -> AssistantMessage:
+        self._validate_assistant(assistant)
+        if role not in {"user", "assistant"}:
+            raise ValueError("Unsupported assistant message role")
+        chat = await self.get_assistant_chat(chat_id, user_id, assistant)
+        if chat is None:
+            raise ValueError("Assistant chat not found")
+        now = self._now()
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "INSERT INTO assistant_messages "
+                "(chat_id, role, content, created_at) VALUES (?, ?, ?, ?)",
+                (chat_id, role, content, now),
+            )
+            await db.execute(
+                "UPDATE assistant_chats SET updated_at=? WHERE id=?",
+                (now, chat_id),
+            )
+            row = await (
+                await db.execute(
+                    "SELECT * FROM assistant_messages WHERE id=?",
+                    (cursor.lastrowid,),
+                )
+            ).fetchone()
+            await db.commit()
+        return AssistantMessage(**dict(row))
+
+    async def get_assistant_messages(
+        self,
+        chat_id: int,
+        user_id: int,
+        assistant: str,
+        limit: int = 100,
+    ) -> list[AssistantMessage]:
+        self._validate_assistant(assistant)
+        chat = await self.get_assistant_chat(chat_id, user_id, assistant)
+        if chat is None:
+            return []
+        safe_limit = max(1, min(limit, 200))
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            rows = await (
+                await db.execute(
+                    "SELECT * FROM ("
+                    "SELECT * FROM assistant_messages WHERE chat_id=? "
+                    "ORDER BY id DESC LIMIT ?) ORDER BY id",
+                    (chat_id, safe_limit),
+                )
+            ).fetchall()
+        return [AssistantMessage(**dict(row)) for row in rows]
+
+    async def rename_assistant_chat(
+        self,
+        chat_id: int,
+        user_id: int,
+        assistant: str,
+        title: str,
+    ) -> bool:
+        self._validate_assistant(assistant)
+        async with self._connect() as db:
+            cursor = await db.execute(
+                "UPDATE assistant_chats SET title=?, updated_at=? "
+                "WHERE id=? AND user_id=? AND assistant=?",
+                (
+                    title.strip()[:120] or "New chat",
+                    self._now(),
+                    chat_id,
+                    user_id,
+                    assistant,
+                ),
+            )
+            await db.commit()
+        return cursor.rowcount == 1
+
+    async def delete_assistant_chat(
+        self,
+        chat_id: int,
+        user_id: int,
+        assistant: str,
+    ) -> bool:
+        self._validate_assistant(assistant)
+        async with self._connect() as db:
+            cursor = await db.execute(
+                "DELETE FROM assistant_chats "
+                "WHERE id=? AND user_id=? AND assistant=?",
+                (chat_id, user_id, assistant),
+            )
+            await db.commit()
+        return cursor.rowcount == 1
+
     def _admin_basic(self, row: aiosqlite.Row) -> AdminUser:
         user = self._row_to_user(row)
         return AdminUser(
@@ -994,14 +1226,14 @@ class Database:
                 "SELECT COALESCE(SUM(used_count),0) FROM request_usage "
                 "WHERE usage_date=?", (self._today(),)
             )).fetchone())[0]
-        counts = {FREE: 0, PRO: 0, PREMIUM: 0}
+        counts = {FREE: 0, PRO: 0, PREMIUM: 0, PREMIUM_PLUS: 0}
         for row in users:
             counts[self._row_to_user(row).plan] += 1
         return AdminStatistics(
             len(users), counts[FREE], counts[PRO], counts[PREMIUM],
             int(new_users), int(pay["revenue"] or 0),
             int(pay["pro_sales"] or 0), int(pay["premium_sales"] or 0),
-            int(total), int(today),
+            int(total), int(today), counts[PREMIUM_PLUS],
         )
 
     async def get_admin_users_page(

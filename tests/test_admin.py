@@ -39,3 +39,4 @@ class AdminTests(unittest.TestCase):
             for button in row
         }
         self.assertIn("admin:block:1:0:-", callbacks)
+        self.assertIn("admin:grant:premium_plus:1:0:-", callbacks)

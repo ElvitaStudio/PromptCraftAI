@@ -57,6 +57,7 @@ result you need, and receive a polished prompt in Russian or English.
 - Prompt Chat requirements wizard for complex project ideas
 - Admin broadcasts with audience targeting, previews and delivery statistics
 - Localized news feed generated from confirmed broadcasts
+- Premium Plus AI Workspace with isolated GPT, Claude and Gemini assistants
 
 ## Prompt templates
 
@@ -126,6 +127,31 @@ architecture, testing, error handling, security, documentation and acceptance
 criteria.
 
 Prompt Chat supports Claude Code, Codex, Cursor, ChatGPT, Gemini and DeepSeek.
+
+## Premium Plus AI Workspace
+
+Premium Plus is the first step toward turning PromptCraft AI into an AI
+Workspace. Its price is currently defined as an application constant and
+payments are intentionally not connected yet.
+
+The main menu includes **AI Assistants**:
+
+- GPT Assistant
+- Claude Assistant
+- Gemini Assistant
+
+Each assistant has an isolated workspace with:
+
+- multiple saved chats;
+- new and continued conversations;
+- persistent message history and context;
+- search by chat title or message content;
+- chat deletion.
+
+GPT uses the existing OpenAI API configuration. Claude and Gemini expose
+provider-ready service interfaces and use localized safe stubs until native
+API keys are connected. Assistant history is stored separately from regular
+PromptCraft prompt history.
 
 ## Referral system
 
@@ -268,6 +294,8 @@ PromptCraftAI/
 ├── app/
 │   ├── handlers/       # Telegram command and callback handlers
 │   ├── services/       # OpenAI integration
+│   ├── assistant_workspace.py
+│   ├── assistant_keyboards.py
 │   ├── database.py     # SQLite storage and migrations
 │   ├── keyboards.py    # User inline keyboards
 │   ├── templates.py    # Prompt template library

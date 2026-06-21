@@ -1,4 +1,5 @@
 from app.catalog import tr
+from app.plans import PREMIUM_PLUS_PRICE_STARS
 
 
 def premium_text(language: str) -> str:
@@ -23,6 +24,14 @@ def premium_text(language: str) -> str:
         "• Все режимы программиста\n"
         "• Избранное\n"
         "• Экспорт TXT и Markdown\n\n"
+        "━━━━━━━━━━━━\n"
+        "💎 PREMIUM PLUS\n"
+        f"• Стоимость: {PREMIUM_PLUS_PRICE_STARS} Stars (пока без оплаты)\n"
+        "• GPT Assistant\n"
+        "• Claude Assistant\n"
+        "• Gemini Assistant\n"
+        "• Раздельная история и память чатов\n"
+        "• Поиск и сохранение диалогов\n\n"
         "Выберите тариф:",
         "👑 PromptCraft AI plans\n\n"
         "🆓 FREE\n"
@@ -43,5 +52,13 @@ def premium_text(language: str) -> str:
         "• All developer modes\n"
         "• Favorites\n"
         "• TXT and Markdown export\n\n"
+        "━━━━━━━━━━━━\n"
+        "💎 PREMIUM PLUS\n"
+        f"• Price: {PREMIUM_PLUS_PRICE_STARS} Stars (payments coming later)\n"
+        "• GPT Assistant\n"
+        "• Claude Assistant\n"
+        "• Gemini Assistant\n"
+        "• Separate chat history and memory\n"
+        "• Chat search and saved conversations\n\n"
         "Choose a plan:",
     )
