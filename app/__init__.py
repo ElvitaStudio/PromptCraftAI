@@ -1,0 +1,1 @@
+"""PromptCraft AI Telegram bot."""
