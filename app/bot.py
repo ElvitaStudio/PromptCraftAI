@@ -11,17 +11,16 @@ async def set_commands(bot: Bot) -> None:
     await bot.set_my_commands(
         [
             BotCommand(command="start", description="Start"),
-            BotCommand(command="new", description="New prompt"),
-            BotCommand(command="history", description="Prompt history"),
-            BotCommand(command="templates", description="Templates"),
-            BotCommand(command="favorites", description="Favorites"),
-            BotCommand(command="daily", description="Prompt of the Day"),
-            BotCommand(command="limits", description="My limits"),
-            BotCommand(command="premium", description="Plans"),
-            BotCommand(command="invite", description="Invite a friend"),
-            BotCommand(command="language", description="Language"),
             BotCommand(command="help", description="Help"),
+            BotCommand(command="premium", description="Plans"),
+            BotCommand(command="history", description="Prompt history"),
+            BotCommand(command="settings", description="Settings"),
+            BotCommand(command="templates", description="Templates"),
+            BotCommand(command="news", description="News"),
+            BotCommand(command="invite", description="Invite a friend"),
             BotCommand(command="paysupport", description="Payment support"),
+            BotCommand(command="admin", description="Admin panel"),
+            BotCommand(command="broadcast", description="Broadcast"),
         ]
     )
 

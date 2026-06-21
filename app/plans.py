@@ -18,7 +18,7 @@ class PlanLimits:
 
 PLAN_LIMITS = {
     FREE: PlanLimits("Free", 5, 5, 1, False, 1),
-    PRO: PlanLimits("Pro", 100, 30, None, False, 1),
+    PRO: PlanLimits("Pro", 100, 30, None, False, 2),
     PREMIUM: PlanLimits("Premium", None, 100, None, True, 3),
 }
 

@@ -202,6 +202,7 @@ class PreferenceDatabaseTests(unittest.IsolatedAsyncioTestCase):
                     "last_difficulty",
                     "last_response_style",
                     "last_workflow",
+                    "export_format",
                 }.issubset(columns)
             )
 
@@ -321,8 +322,8 @@ class ProfessionalGenerationTests(unittest.TestCase):
             for button in row
         ]
         self.assertIn("✍ Создать промпт", ru)
-        self.assertIn("🔧 Улучшить мой промпт", ru)
+        self.assertIn("🔧 Улучшить промпт", ru)
         self.assertIn("🔥 Промпт дня", ru)
         self.assertIn("✍ Create Prompt", en)
-        self.assertIn("🔧 Optimize My Prompt", en)
+        self.assertIn("🔧 Optimize Prompt", en)
         self.assertIn("🔥 Prompt of the Day", en)

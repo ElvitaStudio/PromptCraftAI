@@ -35,27 +35,25 @@ def workflow_keyboard(
                     else "✍ Create Prompt"
                 ),
                 callback_data="workflow:create",
-            )
-        ],
-        [
+            ),
             InlineKeyboardButton(
                 text=(
-                    "🔧 Улучшить мой промпт"
+                    "🔧 Улучшить промпт"
                     if language == "ru"
-                    else "🔧 Optimize My Prompt"
+                    else "🔧 Optimize Prompt"
                 ),
                 callback_data="workflow:optimize",
-            )
+            ),
         ],
         [
             InlineKeyboardButton(
-                text=(
-                    "🔥 Промпт дня"
-                    if language == "ru"
-                    else "🔥 Prompt of the Day"
-                ),
-                callback_data="nav:daily",
-            )
+                text="📜 История" if language == "ru" else "📜 History",
+                callback_data="nav:history",
+            ),
+            InlineKeyboardButton(
+                text="⭐ Избранное" if language == "ru" else "⭐ Favorites",
+                callback_data="nav:favorites",
+            ),
         ],
         [
             InlineKeyboardButton(
@@ -63,9 +61,29 @@ def workflow_keyboard(
                 callback_data="nav:templates",
             ),
             InlineKeyboardButton(
-                text="⭐ Избранное" if language == "ru" else "⭐ Favorites",
-                callback_data="nav:favorites",
+                text=(
+                    "🔥 Промпт дня"
+                    if language == "ru"
+                    else "🔥 Prompt of the Day"
+                ),
+                callback_data="nav:daily",
             ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="👑 Premium",
+                callback_data="nav:premium",
+            ),
+            InlineKeyboardButton(
+                text="⚙️ Настройки" if language == "ru" else "⚙️ Settings",
+                callback_data="nav:settings",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="💬 Prompt Chat",
+                callback_data="promptchat:start",
+            )
         ],
     ]
     if has_saved_settings:
@@ -165,7 +183,10 @@ def response_style_keyboard(
     language: str,
 ) -> InlineKeyboardMarkup:
     prefix = f"style:{category}:{target_ai}"
-    items = list(RESPONSE_STYLES.items())
+    items = [
+        (code, RESPONSE_STYLES[code])
+        for code in ("short", "detailed", "professional", "expert")
+    ]
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -339,7 +360,7 @@ def favorites_keyboard(
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def premium_keyboard() -> InlineKeyboardMarkup:
+def premium_keyboard(language: str = "en") -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -356,8 +377,296 @@ def premium_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="🎁 Invite a friend",
+                    text=(
+                        "🎁 Пригласить друга"
+                        if language == "ru"
+                        else "🎁 Invite a friend"
+                    ),
                     callback_data="payment:invite",
+                )
+            ],
+        ]
+    )
+
+
+def settings_keyboard(language: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🌐 Язык" if language == "ru" else "🌐 Language",
+                    callback_data="settings:language",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=(
+                        "🎨 Стиль ответа"
+                        if language == "ru"
+                        else "🎨 Response style"
+                    ),
+                    callback_data="settings:style",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=(
+                        "🧠 Уровень генерации"
+                        if language == "ru"
+                        else "🧠 Generation level"
+                    ),
+                    callback_data="settings:difficulty",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=(
+                        "🤖 AI по умолчанию"
+                        if language == "ru"
+                        else "🤖 Default AI"
+                    ),
+                    callback_data="settings:ai",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=(
+                        "📋 Формат экспорта"
+                        if language == "ru"
+                        else "📋 Export format"
+                    ),
+                    callback_data="settings:export",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="⬅️ Главное меню" if language == "ru" else "⬅️ Main menu",
+                    callback_data="nav:menu",
+                )
+            ],
+        ]
+    )
+
+
+def settings_styles_keyboard(language: str) -> InlineKeyboardMarkup:
+    labels = {
+        "professional": "🎯 Professional",
+        "detailed": "📑 Detailed",
+        "concise": "📄 Concise",
+        "creative": "🎨 Creative",
+    }
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=label,
+                    callback_data=f"pref:style:{code}",
+                )
+            ]
+            for code, label in labels.items()
+        ]
+        + [[
+            InlineKeyboardButton(
+                text="⬅️ Назад" if language == "ru" else "⬅️ Back",
+                callback_data="nav:settings",
+            )
+        ]]
+    )
+
+
+def settings_difficulty_keyboard(language: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=DIFFICULTIES[code][language],
+                    callback_data=f"pref:difficulty:{code}",
+                )
+            ]
+            for code in ("simple", "advanced", "expert")
+        ]
+        + [[
+            InlineKeyboardButton(
+                text="⬅️ Назад" if language == "ru" else "⬅️ Back",
+                callback_data="nav:settings",
+            )
+        ]]
+    )
+
+
+def settings_ai_keyboard(language: str) -> InlineKeyboardMarkup:
+    buttons = [
+        InlineKeyboardButton(
+            text=name,
+            callback_data=f"pref:ai:{code}",
+        )
+        for code, name in AI_MODELS.items()
+    ]
+    rows = [buttons[index:index + 2] for index in range(0, len(buttons), 2)]
+    rows.append([
+        InlineKeyboardButton(
+            text="⬅️ Назад" if language == "ru" else "⬅️ Back",
+            callback_data="nav:settings",
+        )
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def settings_export_keyboard(language: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📄 TXT",
+                    callback_data="pref:export:txt",
+                ),
+                InlineKeyboardButton(
+                    text="📝 Markdown",
+                    callback_data="pref:export:markdown",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="⬅️ Назад" if language == "ru" else "⬅️ Back",
+                    callback_data="nav:settings",
+                )
+            ],
+        ]
+    )
+
+
+def history_list_keyboard(
+    prompts: list[tuple[int, str]],
+    page: int,
+    total_pages: int,
+    language: str,
+) -> InlineKeyboardMarkup:
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=f"{index}. {title}"[:64],
+                callback_data=f"history:open:{prompt_id}:{page}",
+            )
+        ]
+        for index, (prompt_id, title) in enumerate(prompts, page * 5 + 1)
+    ]
+    navigation = []
+    if page > 0:
+        navigation.append(
+            InlineKeyboardButton(
+                text="⬅️",
+                callback_data=f"history:page:{page - 1}",
+            )
+        )
+    navigation.append(
+        InlineKeyboardButton(
+            text=f"{page + 1}/{total_pages}",
+            callback_data="history:noop",
+        )
+    )
+    if page + 1 < total_pages:
+        navigation.append(
+            InlineKeyboardButton(
+                text="➡️",
+                callback_data=f"history:page:{page + 1}",
+            )
+        )
+    rows.append(navigation)
+    rows.append([
+        InlineKeyboardButton(
+            text="⬅️ Главное меню" if language == "ru" else "⬅️ Main menu",
+            callback_data="nav:menu",
+        )
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def history_prompt_keyboard(
+    prompt_id: int,
+    page: int,
+    language: str,
+) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=(
+                        "♻️ Использовать снова"
+                        if language == "ru"
+                        else "♻️ Use again"
+                    ),
+                    callback_data=f"history:reuse:{prompt_id}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=(
+                        "⭐ В избранное"
+                        if language == "ru"
+                        else "⭐ Add to favorites"
+                    ),
+                    callback_data=f"history:favorite:{prompt_id}",
+                ),
+                InlineKeyboardButton(
+                    text="📤 Экспорт" if language == "ru" else "📤 Export",
+                    callback_data=f"history:export:{prompt_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="⬅️ К истории" if language == "ru" else "⬅️ History",
+                    callback_data=f"history:page:{page}",
+                )
+            ],
+        ]
+    )
+
+
+def prompt_chat_ai_keyboard(language: str) -> InlineKeyboardMarkup:
+    models = {
+        "claude_code": "Claude Code",
+        "codex": "Codex",
+        "cursor": "Cursor",
+        "chatgpt": "ChatGPT",
+        "gemini": "Gemini",
+        "deepseek": "DeepSeek",
+    }
+    buttons = [
+        InlineKeyboardButton(
+            text=name,
+            callback_data=f"promptchat:ai:{code}",
+        )
+        for code, name in models.items()
+    ]
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            buttons[index:index + 2]
+            for index in range(0, len(buttons), 2)
+        ]
+    )
+
+
+def news_keyboard(language: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=(
+                        "🔥 Попробовать"
+                        if language == "ru"
+                        else "🔥 Try it"
+                    ),
+                    callback_data="nav:menu",
+                ),
+                InlineKeyboardButton(
+                    text="⭐ Premium",
+                    callback_data="nav:premium",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="💬 Отзыв" if language == "ru" else "💬 Feedback",
+                    callback_data="news:feedback",
                 )
             ],
         ]

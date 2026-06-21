@@ -1,12 +1,12 @@
-from aiogram import Router
+from aiogram import F, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.filters.command import CommandObject
-from aiogram.types import Message
+from aiogram.types import CallbackQuery, Message
 
 from app.catalog import tr
 from app.daily_prompts import prompt_of_the_day
 from app.database import Database
-from app.history import history_chunks
+from app.handlers.history import show_history_page
 from app.keyboards import (
     favorites_keyboard,
     language_keyboard,
@@ -24,6 +24,7 @@ from app.referrals import (
     invite_message,
     parse_referral_payload,
 )
+from app.subscriptions import premium_text
 
 
 router = Router(name="commands")
@@ -105,11 +106,13 @@ async def help_command(message: Message, db: Database) -> None:
             "/limits — лимиты\n/premium — тарифы\n/invite — рефералы\n"
             "/templates — шаблоны\n/favorites — избранное\n"
             "/daily — промпт дня\n"
+            "/chat — Prompt Chat\n/settings — настройки\n"
             "/language — язык",
             "Commands:\n/new — new prompt\n/history — history\n"
             "/limits — limits\n/premium — plans\n/invite — referrals\n"
             "/templates — templates\n/favorites — favorites\n"
             "/daily — prompt of the day\n"
+            "/chat — Prompt Chat\n/settings — settings\n"
             "/language — language",
         )
     )
@@ -117,14 +120,8 @@ async def help_command(message: Message, db: Database) -> None:
 
 @router.message(Command("history"))
 async def history_command(message: Message, db: Database) -> None:
-    user = await db.get_user_by_telegram_id(message.from_user.id)
-    if not user:
-        return
-    for chunk in history_chunks(
-        await db.get_prompt_history(user),
-        user.language or "ru",
-    ):
-        await message.answer(chunk)
+    if message.from_user:
+        await show_history_page(message, db, message.from_user.id)
 
 
 @router.message(Command("limits"))
@@ -158,20 +155,22 @@ async def limits_command(message: Message, db: Database) -> None:
 async def premium_command(message: Message, db: Database) -> None:
     user = await db.get_user_by_telegram_id(message.from_user.id)
     language = user.language if user and user.language else "ru"
-    text = tr(
-        language,
-        "🆓 Free\n• 5 запросов в день\n• История 5\n"
-        "• 1 улучшение промпта\n\n"
-        "⭐ Pro — 199 Stars\n• 100 запросов в день\n• История 30\n\n"
-        "👑 Premium — 399 Stars\n• Безлимитные запросы\n"
-        "• Expert mode\n• 3 варианта ответа",
-        "🆓 Free\n• 5 requests/day\n• History 5\n"
-        "• 1 prompt improvement\n\n"
-        "⭐ Pro — 199 Stars\n• 100 requests/day\n• History 30\n\n"
-        "👑 Premium — 399 Stars\n• Unlimited requests\n"
-        "• Expert mode\n• 3 response variants",
+    await message.answer(
+        premium_text(language),
+        reply_markup=premium_keyboard(language),
     )
-    await message.answer(text, reply_markup=premium_keyboard())
+
+
+@router.callback_query(F.data == "nav:premium")
+async def premium_callback(callback: CallbackQuery, db: Database) -> None:
+    user = await db.get_user_by_telegram_id(callback.from_user.id)
+    language = user.language if user and user.language else "ru"
+    if isinstance(callback.message, Message):
+        await callback.message.answer(
+            premium_text(language),
+            reply_markup=premium_keyboard(language),
+        )
+    await callback.answer()
 
 
 @router.message(Command("invite"))

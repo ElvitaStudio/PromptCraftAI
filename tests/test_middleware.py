@@ -29,6 +29,7 @@ class MiddlewareTests(unittest.IsolatedAsyncioTestCase):
             await middleware(handler, event, {"db": db}),
             "ok",
         )
+        db.upsert_user.assert_awaited_once()
 
     async def test_start_is_not_pre_registered(self) -> None:
         middleware = UserProfileMiddleware()

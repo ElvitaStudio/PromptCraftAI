@@ -24,6 +24,10 @@ STYLE_GUIDANCE = {
         "Keep the final prompt concise. Use compact sections and remove all "
         "nonessential commentary."
     ),
+    "concise": (
+        "Keep the final prompt concise, direct and information-dense. Preserve "
+        "essential constraints while avoiding repetition."
+    ),
     "detailed": (
         "Make the final prompt detailed, explanatory and comprehensive."
     ),
@@ -34,6 +38,10 @@ STYLE_GUIDANCE = {
     "expert": (
         "Write for an expert operator. Use domain terminology, rigorous "
         "reasoning instructions and explicit evaluation criteria."
+    ),
+    "creative": (
+        "Use an original, engaging prompt structure and encourage thoughtful "
+        "alternatives without weakening precision or constraints."
     ),
 }
 

@@ -1,6 +1,8 @@
 from app.catalog import AI_MODELS, CATEGORIES
 from app.database import PromptRecord
 
+EXTRA_AI_NAMES = {"deepseek": "DeepSeek"}
+
 
 def prompt_txt(record: PromptRecord) -> bytes:
     return record.prompt_text.strip().encode("utf-8")
@@ -11,7 +13,10 @@ def prompt_markdown(record: PromptRecord) -> bytes:
         record.language,
         record.category,
     )
-    target_ai = AI_MODELS.get(record.target_ai, record.target_ai)
+    target_ai = AI_MODELS.get(
+        record.target_ai,
+        EXTRA_AI_NAMES.get(record.target_ai, record.target_ai),
+    )
     text = (
         "# PromptCraft AI\n\n"
         f"- **AI:** {target_ai}\n"

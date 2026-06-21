@@ -42,10 +42,12 @@ async def admin_command(
     if not _is_admin(message.from_user.id if message.from_user else None, settings):
         await message.answer(ACCESS_DENIED)
         return
+    user = await db.get_user_by_telegram_id(message.from_user.id)
+    language = user.language if user and user.language else "ru"
     stats = await db.get_admin_statistics()
     await message.answer(
         dashboard_text(stats),
-        reply_markup=dashboard_keyboard(),
+        reply_markup=dashboard_keyboard(language),
     )
 
 
@@ -94,9 +96,11 @@ async def admin_callback(
     parts = (callback.data or "").split(":")
     action = parts[1] if len(parts) > 1 else ""
     if action == "home":
+        user = await db.get_user_by_telegram_id(callback.from_user.id)
+        language = user.language if user and user.language else "ru"
         await callback.message.edit_text(
             dashboard_text(await db.get_admin_statistics()),
-            reply_markup=dashboard_keyboard(),
+            reply_markup=dashboard_keyboard(language),
         )
     elif action == "close":
         await callback.message.delete()
@@ -111,6 +115,31 @@ async def admin_callback(
         )
         for chunk in chunks[1:]:
             await callback.message.answer(chunk)
+    elif action == "broadcast":
+        from app.handlers.broadcast import start_broadcast
+
+        await start_broadcast(
+            callback.message,
+            db,
+            state,
+            callback.from_user.id,
+        )
+    elif action == "news":
+        user = await db.get_user_by_telegram_id(callback.from_user.id)
+        language = user.language if user and user.language else "ru"
+        items = await db.get_news(language, 20)
+        text = "📰 News\n\n" if language == "en" else "📰 Новости\n\n"
+        if items:
+            text += "\n".join(
+                f"{index}. {item.title}"
+                for index, item in enumerate(items, 1)
+            )
+        else:
+            text += "No news yet." if language == "en" else "Новостей пока нет."
+        await callback.message.edit_text(
+            text,
+            reply_markup=back_keyboard(),
+        )
     elif action == "users":
         page = int(parts[2])
         search = parts[3] if len(parts) > 3 and parts[3] != "-" else None

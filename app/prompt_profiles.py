@@ -11,12 +11,15 @@ DIFFICULTIES = {
 
 RESPONSE_STYLES = {
     "short": {"ru": "📄 Short", "en": "📄 Short"},
+    "concise": {"ru": "📄 Concise", "en": "📄 Concise"},
     "detailed": {"ru": "📑 Detailed", "en": "📑 Detailed"},
     "professional": {"ru": "🎯 Professional", "en": "🎯 Professional"},
     "expert": {"ru": "🧠 Expert", "en": "🧠 Expert"},
+    "creative": {"ru": "🎨 Creative", "en": "🎨 Creative"},
 }
 
 WORKFLOWS = {"create", "optimize"}
+EXPORT_FORMATS = {"txt", "markdown"}
 
 CODING_ASSISTANTS = {"claude_code", "codex", "cursor"}
 

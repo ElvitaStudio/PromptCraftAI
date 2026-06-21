@@ -29,6 +29,26 @@ The first public release of PromptCraft AI.
 - Prompt history with source request, result, category, target AI, language
   and creation date
 - TXT and Markdown exports
+- Paginated history with prompt cards, reuse, favorites and export
+- Saved default AI and TXT/Markdown export preference
+
+### Prompt Chat
+
+- Guided Russian and English requirements interview
+- Audience, features, design, monetization and technology questions
+- Claude Code, Codex, Cursor, ChatGPT, Gemini and DeepSeek targets
+- Professional output with architecture, testing, error handling, security,
+  documentation and acceptance criteria
+
+### Interface and settings
+
+- New bilingual inline main menu
+- Dedicated Settings section
+- Professional, Detailed, Concise and Creative saved styles
+- Simple, Advanced and Premium-only Expert saved levels
+- Default AI selection across all 13 core AI tools
+- Redesigned bilingual Free, Pro and Premium presentation
+- Free, Pro and Premium variants set to 1, 2 and 3 respectively
 
 ### Plans and payments
 
@@ -46,6 +66,12 @@ The first public release of PromptCraft AI.
 - Plan assignment and temporary Premium rewards
 - User blocking and unblocking
 - Referral reports
+- Broadcast wizard with audience targeting
+- Text, photo, document and video broadcasts
+- Preview and confirmation before delivery
+- Delivery, error and blocked-user statistics
+- Automatic blocked-user marking
+- Localized news archive and `/news`
 
 ### Engineering
 

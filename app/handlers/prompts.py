@@ -113,7 +113,7 @@ async def _prepare_from_preferences(
         response_style=user.last_response_style,
         workflow=user.last_workflow,
         expert=difficulty == "expert",
-        variants=1,
+        variants=get_plan_limits(user.plan).response_variants,
     )
     await message.answer(
         tr(
@@ -167,6 +167,14 @@ async def choose_workflow(
             selected=user.last_category,
         ),
     )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "nav:menu")
+async def show_main_menu(callback: CallbackQuery, db: Database) -> None:
+    user = await db.get_user_by_telegram_id(callback.from_user.id)
+    if user and isinstance(callback.message, Message):
+        await _show_workflows(callback.message, user)
     await callback.answer()
 
 
@@ -318,7 +326,7 @@ async def choose_template(
         response_style="professional",
         workflow="create",
         expert=user.plan == PREMIUM,
-        variants=1,
+        variants=get_plan_limits(user.plan).response_variants,
         template_code=template.code,
         template_structure=template.structure(user.language),
     )
@@ -402,7 +410,7 @@ async def choose_ai(
         response_style=user.last_response_style,
         workflow=user.last_workflow,
         expert=difficulty == "expert",
-        variants=1,
+        variants=get_plan_limits(user.plan).response_variants,
     )
     await _save_preferences(
         db,
@@ -514,7 +522,11 @@ async def choose_mode(
         target_ai=target_ai,
         difficulty=difficulty,
         expert=difficulty == "expert",
-        variants=3 if normalized_mode == "variants" else 1,
+        variants=(
+            3
+            if normalized_mode == "variants"
+            else get_plan_limits(user.plan).response_variants
+        ),
     )
     await _save_preferences(
         db,

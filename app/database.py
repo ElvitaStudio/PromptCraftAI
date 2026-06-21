@@ -11,6 +11,7 @@ import aiosqlite
 from app.plans import FREE, PREMIUM, PRO, VALID_PLANS, get_plan_limits
 from app.prompt_profiles import (
     DIFFICULTIES,
+    EXPORT_FORMATS,
     RESPONSE_STYLES,
     WORKFLOWS,
     validate_profile,
@@ -32,6 +33,7 @@ class User:
     last_difficulty: str = "simple"
     last_response_style: str = "professional"
     last_workflow: str = "create"
+    export_format: str = "txt"
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +57,14 @@ class PromptRecord:
     mode: str
     created_at: str
     language: str = "ru"
+
+
+@dataclass(frozen=True, slots=True)
+class PromptHistoryPage:
+    prompts: list[PromptRecord]
+    page: int
+    total_prompts: int
+    total_pages: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +95,23 @@ class Payment:
     telegram_payment_charge_id: str
     provider_payment_charge_id: str
     created_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class NewsItem:
+    id: int
+    title: str
+    text: str
+    language: str
+    created_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class BroadcastRecipient:
+    user_id: int
+    telegram_id: int
+    plan: str
+    language: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -178,11 +205,13 @@ class Database:
                     plan TEXT NOT NULL DEFAULT 'free', plan_until TEXT,
                     referred_by INTEGER, premium_until TEXT,
                     is_blocked INTEGER NOT NULL DEFAULT 0,
+                    last_active_at TEXT,
                     last_category TEXT NOT NULL DEFAULT 'text',
                     last_target_ai TEXT NOT NULL DEFAULT 'chatgpt',
                     last_difficulty TEXT NOT NULL DEFAULT 'simple',
                     last_response_style TEXT NOT NULL DEFAULT 'professional',
                     last_workflow TEXT NOT NULL DEFAULT 'create',
+                    export_format TEXT NOT NULL DEFAULT 'txt',
                     created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
                     FOREIGN KEY (referred_by) REFERENCES users(id)
                 );
@@ -239,6 +268,15 @@ class Database:
                     created_at TEXT NOT NULL,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 );
+                CREATE TABLE IF NOT EXISTS news (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    text TEXT NOT NULL,
+                    language TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_news_language_created
+                    ON news(language, created_at);
                 """
             )
             prompt_columns = {
@@ -259,6 +297,7 @@ class Database:
                 ).fetchall()
             }
             preference_columns = {
+                "is_blocked": "INTEGER NOT NULL DEFAULT 0",
                 "last_category": "TEXT NOT NULL DEFAULT 'text'",
                 "last_target_ai": "TEXT NOT NULL DEFAULT 'chatgpt'",
                 "last_difficulty": "TEXT NOT NULL DEFAULT 'simple'",
@@ -266,6 +305,8 @@ class Database:
                     "TEXT NOT NULL DEFAULT 'professional'"
                 ),
                 "last_workflow": "TEXT NOT NULL DEFAULT 'create'",
+                "export_format": "TEXT NOT NULL DEFAULT 'txt'",
+                "last_active_at": "TEXT",
             }
             for name, definition in preference_columns.items():
                 if name not in user_columns:
@@ -334,6 +375,7 @@ class Database:
             last_difficulty=row["last_difficulty"],
             last_response_style=row["last_response_style"],
             last_workflow=row["last_workflow"],
+            export_format=row["export_format"],
         )
 
     async def register_user(
@@ -354,18 +396,29 @@ class Database:
             if row:
                 await db.execute(
                     "UPDATE users SET username=?, first_name=?, last_name=?, "
-                    "full_name=?, updated_at=? WHERE id=?",
-                    (username, first_name, last_name, full_name, now, row["id"]),
+                    "full_name=?, last_active_at=?, updated_at=? WHERE id=?",
+                    (
+                        username, first_name, last_name, full_name,
+                        now, now, row["id"],
+                    ),
                 )
+                row = await (
+                    await db.execute(
+                        "SELECT * FROM users WHERE id=?", (row["id"],)
+                    )
+                ).fetchone()
                 await db.commit()
                 return RegistrationResult(
                     self._row_to_user(row), False, False
                 )
             cursor = await db.execute(
                 "INSERT INTO users (telegram_id, username, first_name, "
-                "last_name, full_name, plan, created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, 'free', ?, ?)",
-                (telegram_id, username, first_name, last_name, full_name, now, now),
+                "last_name, full_name, plan, last_active_at, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, 'free', ?, ?, ?)",
+                (
+                    telegram_id, username, first_name, last_name,
+                    full_name, now, now, now,
+                ),
             )
             user_id = int(cursor.lastrowid)
             rewarded = False
@@ -443,6 +496,7 @@ class Database:
         difficulty: str | None = None,
         response_style: str | None = None,
         workflow: str | None = None,
+        export_format: str | None = None,
     ) -> None:
         user = await self.get_user_by_telegram_id(telegram_id)
         if user is None:
@@ -453,6 +507,7 @@ class Database:
             "last_difficulty": difficulty or user.last_difficulty,
             "last_response_style": response_style or user.last_response_style,
             "last_workflow": workflow or user.last_workflow,
+            "export_format": export_format or user.export_format,
         }
         validate_profile(
             values["last_category"],
@@ -467,17 +522,20 @@ class Database:
             raise ValueError("Unsupported response style")
         if values["last_workflow"] not in WORKFLOWS:
             raise ValueError("Unsupported workflow")
+        if values["export_format"] not in EXPORT_FORMATS:
+            raise ValueError("Unsupported export format")
         async with self._connect() as db:
             await db.execute(
                 "UPDATE users SET last_category=?, last_target_ai=?, "
                 "last_difficulty=?, last_response_style=?, last_workflow=?, "
-                "updated_at=? WHERE telegram_id=?",
+                "export_format=?, updated_at=? WHERE telegram_id=?",
                 (
                     values["last_category"],
                     values["last_target_ai"],
                     values["last_difficulty"],
                     values["last_response_style"],
                     values["last_workflow"],
+                    values["export_format"],
                     self._now(),
                     telegram_id,
                 ),
@@ -616,6 +674,39 @@ class Database:
                 )
             ).fetchall()
         return [self._prompt(row) for row in rows]
+
+    async def get_prompt_history_page(
+        self,
+        user: User,
+        page: int,
+        page_size: int = 5,
+    ) -> PromptHistoryPage:
+        history_limit = get_plan_limits(user.plan).history_limit
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            total_row = await (
+                await db.execute(
+                    "SELECT COUNT(*) FROM prompts WHERE user_id=?",
+                    (user.id,),
+                )
+            ).fetchone()
+            total = min(int(total_row[0]), history_limit)
+            total_pages = max(1, (total + page_size - 1) // page_size)
+            current = min(max(page, 0), total_pages - 1)
+            rows = await (
+                await db.execute(
+                    "SELECT * FROM prompts WHERE user_id=? "
+                    "ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?",
+                    (user.id, min(page_size, history_limit),
+                     current * page_size),
+                )
+            ).fetchall()
+        return PromptHistoryPage(
+            [self._prompt(row) for row in rows],
+            current,
+            total,
+            total_pages,
+        )
 
     async def add_favorite(
         self,
@@ -788,6 +879,90 @@ class Database:
             )
             await db.commit()
         return cursor.rowcount == 1
+
+    async def set_user_blocked_by_telegram_id(
+        self,
+        telegram_id: int,
+        blocked: bool,
+    ) -> bool:
+        async with self._connect() as db:
+            cursor = await db.execute(
+                "UPDATE users SET is_blocked=?, updated_at=? "
+                "WHERE telegram_id=?",
+                (int(blocked), self._now(), telegram_id),
+            )
+            await db.commit()
+        return cursor.rowcount == 1
+
+    async def get_broadcast_recipients(
+        self,
+        audience: str,
+    ) -> list[BroadcastRecipient]:
+        if audience not in {"all", "free", "paid", "premium"}:
+            raise ValueError("Unsupported broadcast audience")
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            rows = await (
+                await db.execute(
+                    "SELECT * FROM users WHERE is_blocked=0 "
+                    "ORDER BY id"
+                )
+            ).fetchall()
+        recipients = []
+        for row in rows:
+            user = self._row_to_user(row)
+            include = (
+                audience == "all"
+                or (audience == "free" and user.plan == FREE)
+                or (audience == "paid" and user.plan in {PRO, PREMIUM})
+                or (audience == "premium" and user.plan == PREMIUM)
+            )
+            if include:
+                recipients.append(
+                    BroadcastRecipient(
+                        user.id,
+                        user.telegram_id,
+                        user.plan,
+                        user.language or "ru",
+                    )
+                )
+        return recipients
+
+    async def save_news(
+        self,
+        title: str,
+        text: str,
+        language: str,
+    ) -> int:
+        if language not in {"ru", "en"}:
+            raise ValueError("Unsupported news language")
+        async with self._connect() as db:
+            cursor = await db.execute(
+                "INSERT INTO news (title, text, language, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (title[:200], text, language, self._now()),
+            )
+            await db.commit()
+        return int(cursor.lastrowid)
+
+    async def get_news(
+        self,
+        language: str,
+        limit: int = 20,
+    ) -> list[NewsItem]:
+        if language not in {"ru", "en"}:
+            language = "ru"
+        safe_limit = max(1, min(limit, 20))
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            rows = await (
+                await db.execute(
+                    "SELECT * FROM news WHERE language=? "
+                    "ORDER BY created_at DESC, id DESC LIMIT ?",
+                    (language, safe_limit),
+                )
+            ).fetchall()
+        return [NewsItem(**dict(row)) for row in rows]
 
     def _admin_basic(self, row: aiosqlite.Row) -> AdminUser:
         user = self._row_to_user(row)

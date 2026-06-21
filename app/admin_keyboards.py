@@ -8,13 +8,16 @@ def _button(text: str, data: str) -> InlineKeyboardButton:
     return InlineKeyboardButton(text=text, callback_data=f"admin:{data}")
 
 
-def dashboard_keyboard() -> InlineKeyboardMarkup:
+def dashboard_keyboard(language: str = "ru") -> InlineKeyboardMarkup:
+    is_en = language == "en"
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [_button("👥 Пользователи", "users:0")],
-            [_button("🔎 Поиск", "search")],
-            [_button("🎁 Рефералы", "referrals")],
-            [_button("⬅️ Закрыть", "close")],
+            [_button("👥 Users" if is_en else "👥 Пользователи", "users:0")],
+            [_button("🔎 Search" if is_en else "🔎 Поиск", "search")],
+            [_button("🎁 Referrals" if is_en else "🎁 Рефералы", "referrals")],
+            [_button("📣 Broadcast" if is_en else "📣 Рассылка", "broadcast")],
+            [_button("📰 News" if is_en else "📰 Новости", "news")],
+            [_button("⬅️ Close" if is_en else "⬅️ Закрыть", "close")],
         ]
     )
 

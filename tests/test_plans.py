@@ -14,6 +14,7 @@ class PlanTests(unittest.TestCase):
         plan = get_plan_limits(PRO)
         self.assertEqual(plan.requests_daily_limit, 100)
         self.assertEqual(plan.history_limit, 30)
+        self.assertEqual(plan.response_variants, 2)
 
     def test_premium(self) -> None:
         plan = get_plan_limits(PREMIUM)

@@ -17,6 +17,15 @@ class AdminTests(unittest.TestCase):
             for button in row
         }
         self.assertIn("admin:search", callbacks)
+        self.assertIn("admin:broadcast", callbacks)
+        self.assertIn("admin:news", callbacks)
+        en_texts = {
+            button.text
+            for row in dashboard_keyboard("en").inline_keyboard
+            for button in row
+        }
+        self.assertIn("📣 Broadcast", en_texts)
+        self.assertIn("📰 News", en_texts)
 
     def test_user_card_and_block_button(self) -> None:
         user = AdminUser(

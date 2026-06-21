@@ -51,8 +51,12 @@ result you need, and receive a polished prompt in Russian or English.
 - Personal referral links and rewards
 - Telegram Stars payments
 - Russian and English interface
+- Inline main menu for generation, history, plans and settings
 - Admin panel with analytics, user search, subscriptions and blocking
 - Premium Expert mode with multiple prompt variants
+- Prompt Chat requirements wizard for complex project ideas
+- Admin broadcasts with audience targeting, previews and delivery statistics
+- Localized news feed generated from confirmed broadcasts
 
 ## Prompt templates
 
@@ -72,11 +76,56 @@ for the task and applies the appropriate prompt structure automatically.
 
 | Plan | Requests | History | Features |
 | --- | ---: | ---: | --- |
-| Free | 5/day | 5 | 1 prompt improvement/day |
-| Pro — 199 Stars | 100/day | 30 | All standard prompt tools |
-| Premium — 399 Stars | Unlimited | 100 | Expert mode and multiple variants |
+| Free | 5/day | 5 | 1 variant, Simple and Advanced |
+| Pro — 199 Stars | 100/day | 30 | 2 variants, all categories, templates |
+| Premium — 399 Stars | Unlimited | 100 | Expert mode, 3 variants, all tools |
 
 Pro and Premium subscriptions are issued for 30 days.
+
+## Main menu
+
+The bilingual inline menu provides direct access to:
+
+- Create Prompt
+- Optimize Prompt
+- Prompt history
+- Favorites
+- Templates
+- Prompt of the Day
+- Premium plans
+- Settings
+- Prompt Chat
+
+## Prompt history
+
+History is paginated according to the active plan. Every entry stores the
+original request, final prompt, category, target AI, language and creation
+date. Users can reopen prompts, reuse clean prompt text, add prompts to
+favorites and export them.
+
+## Settings
+
+Settings are saved in SQLite and reused during future generations:
+
+- Russian or English interface;
+- Professional, Detailed, Concise or Creative response style;
+- Simple, Advanced or Premium-only Expert generation level;
+- default AI from all 13 core AI tools;
+- TXT or Markdown default export format.
+
+Existing specialized generation flows retain their Short and Expert styles.
+
+## Prompt Chat
+
+Prompt Chat is a bilingual requirements wizard. It starts with a rough idea
+and asks focused questions about the project language, audience, features,
+design, monetization, technologies and constraints.
+
+The completed interview becomes a structured professional prompt with
+architecture, testing, error handling, security, documentation and acceptance
+criteria.
+
+Prompt Chat supports Claude Code, Codex, Cursor, ChatGPT, Gemini and DeepSeek.
 
 ## Referral system
 
@@ -114,6 +163,25 @@ Administrators can:
 - add three days of Premium;
 - block and unblock users;
 - inspect referral statistics and relationships.
+- create broadcasts for all, Free, paid or Premium users;
+- review the latest published news.
+
+## Broadcasts and news
+
+Administrators listed in `ADMIN_IDS` can start `/broadcast`, select an
+audience and send text, a photo, document or video with an optional caption.
+The bot shows a preview before sending.
+
+Broadcast delivery:
+
+- excludes users marked as blocked;
+- catches Telegram delivery errors without stopping the campaign;
+- marks users blocked when Telegram reports that the bot was blocked;
+- reports sent, failed, blocked and total recipient counts.
+
+Every confirmed broadcast is saved as a localized news item. Users can open
+the latest 20 items with `/news` and use the Try, Premium and Feedback inline
+buttons.
 
 ## Tech stack
 
@@ -181,6 +249,9 @@ python3 -m unittest discover -s tests -v
 | `/templates` | Open the prompt template library |
 | `/favorites` | View saved prompts |
 | `/history` | View prompt history |
+| `/chat` | Start the Prompt Chat wizard |
+| `/settings` | Open generation and export settings |
+| `/news` | View the latest 20 localized updates |
 | `/limits` | View current plan limits |
 | `/premium` | View plans and purchase a subscription |
 | `/invite` | Open the referral program |
@@ -188,6 +259,7 @@ python3 -m unittest discover -s tests -v
 | `/paysupport` | Get payment support details |
 | `/help` | View help |
 | `/admin` | Open the admin panel |
+| `/broadcast` | Create an admin broadcast |
 
 ## Project structure
 
