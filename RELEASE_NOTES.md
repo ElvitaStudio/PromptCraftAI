@@ -52,8 +52,7 @@ The first public release of PromptCraft AI.
 - Real Anthropic Messages API integration for Claude Assistant
 - Configurable Claude model ID
 - Localized handling for missing provider API keys
-- Gemini Assistant removed from the active product while legacy database rows
-  remain compatible
+- `ADMIN_IDS` bypass for testing GPT and Claude assistants without Premium Plus
 - Automatic SQLite migrations for assistant chats and messages
 
 ### Interface and settings

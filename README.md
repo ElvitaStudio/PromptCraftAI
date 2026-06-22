@@ -147,6 +147,9 @@ Each assistant has an isolated workspace with:
 - search by chat title or message content;
 - chat deletion.
 
+Users listed in `ADMIN_IDS` can access GPT and Claude assistants without an
+active Premium Plus subscription for testing and administration.
+
 GPT uses the existing OpenAI API configuration. Claude uses the Anthropic
 Messages API. Assistant history is stored separately from regular PromptCraft
 prompt history. A missing Anthropic key produces a localized configuration

@@ -7,7 +7,9 @@ from unittest.mock import AsyncMock, patch
 import aiosqlite
 
 from app.database import Database, User
+from app.config import Settings
 from app.handlers.assistants import assistants_menu
+from app.assistant_workspace import ensure_assistant_access
 from app.handlers.gpt_chat import GPTChatFlow, gpt_user_message
 from app.plans import FREE, PREMIUM_PLUS
 from app.services.gpt_service import GPTService
@@ -133,6 +135,50 @@ class GPTChatTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(
             "Premium Plus",
             callback.message.answer.await_args.args[0],
+        )
+
+    async def test_admin_bypasses_premium_plus_for_gpt_and_claude(self) -> None:
+        user = User(1, 42, FREE, language="en")
+        db = SimpleNamespace(
+            get_user_by_telegram_id=AsyncMock(return_value=user)
+        )
+        settings = Settings(
+            "token",
+            "key",
+            admin_ids=frozenset({42}),
+        )
+        for assistant in ("gpt", "claude"):
+            with self.subTest(assistant=assistant):
+                message = SimpleNamespace(answer=AsyncMock())
+                authorized, language = await ensure_assistant_access(
+                    message,
+                    db,
+                    42,
+                    settings,
+                )
+                self.assertEqual(authorized, user)
+                self.assertEqual(language, "en")
+                message.answer.assert_not_awaited()
+
+        callback = SimpleNamespace(
+            from_user=SimpleNamespace(id=42),
+            message=SimpleNamespace(answer=AsyncMock()),
+            answer=AsyncMock(),
+        )
+        with patch("app.handlers.assistants.Message", SimpleNamespace):
+            await assistants_menu(callback, db, settings)
+        keyboard = callback.message.answer.await_args.kwargs["reply_markup"]
+        callbacks = {
+            button.callback_data
+            for row in keyboard.inline_keyboard
+            for button in row
+        }
+        self.assertEqual(
+            {
+                item for item in callbacks
+                if item.startswith("assistant:")
+            },
+            {"assistant:gpt:list", "assistant:claude:list"},
         )
 
     async def test_gpt_stub_is_bilingual(self) -> None:

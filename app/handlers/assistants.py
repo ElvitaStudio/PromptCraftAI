@@ -7,6 +7,7 @@ from app.assistant_keyboards import (
 )
 from app.assistant_workspace import assistant_upgrade_text
 from app.catalog import tr
+from app.config import Settings
 from app.database import Database
 from app.plans import (
     PREMIUM_PLUS_PRICE_STARS,
@@ -18,13 +19,23 @@ router = Router(name="assistants")
 
 
 @router.callback_query(F.data == "assistants:menu")
-async def assistants_menu(callback: CallbackQuery, db: Database) -> None:
+async def assistants_menu(
+    callback: CallbackQuery,
+    db: Database,
+    settings: Settings | None = None,
+) -> None:
     user = await db.get_user_by_telegram_id(callback.from_user.id)
     language = user.language if user and user.language else "ru"
     if not isinstance(callback.message, Message):
         await callback.answer()
         return
-    if not user or not has_assistant_access(user.plan):
+    is_admin = bool(
+        settings is not None
+        and callback.from_user.id in settings.admin_ids
+    )
+    if not user or (
+        not has_assistant_access(user.plan) and not is_admin
+    ):
         await callback.message.answer(
             assistant_upgrade_text(language),
             reply_markup=premium_plus_upgrade_keyboard(language),
@@ -60,10 +71,10 @@ async def premium_plus_info(callback: CallbackQuery, db: Database) -> None:
                 "💎 Premium Plus\n\n"
                 "• GPT Assistant\n"
                 "• Claude Assistant\n"
-                "• Separate history and memory\n"
-                "• Chat search and saved conversations\n\n"
+                "• Separate memory and history\n"
+                "• Search and save chats\n\n"
                 f"Price: {PREMIUM_PLUS_PRICE_STARS} Stars.\n"
-                "Payments will be connected later.",
+                "Payments will be enabled later.",
             )
         )
     await callback.answer()

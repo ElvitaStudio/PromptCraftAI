@@ -12,6 +12,7 @@ from app.assistant_keyboards import (
     premium_plus_upgrade_keyboard,
 )
 from app.catalog import tr
+from app.config import Settings
 from app.database import AssistantMessage, Database
 from app.plans import has_assistant_access
 from app.presentation import split_text
@@ -22,11 +23,11 @@ def assistant_upgrade_text(language: str) -> str:
     return tr(
         language,
         "💎 Premium Plus требуется для AI Assistants.\n\n"
-        "Доступны GPT и Claude с отдельной историей, "
+        "Доступны GPT и Claude с отдельной историей, независимым "
         "контекстом, поиском и сохранением диалогов.",
         "💎 Premium Plus is required for AI Assistants.\n\n"
-        "GPT and Claude include separate history, context, "
-        "search and saved conversations.",
+        "GPT and Claude are available with independent history, context, "
+        "chat search and conversation storage.",
     )
 
 
@@ -66,10 +67,16 @@ async def ensure_assistant_access(
     message: Message,
     db: Database,
     telegram_id: int,
+    settings: Settings | None = None,
 ) -> tuple[Any | None, str]:
     user = await db.get_user_by_telegram_id(telegram_id)
     language = user.language if user and user.language else "ru"
-    if not user or not has_assistant_access(user.plan):
+    is_admin = bool(
+        settings is not None and telegram_id in settings.admin_ids
+    )
+    if not user or (
+        not has_assistant_access(user.plan) and not is_admin
+    ):
         await message.answer(
             assistant_upgrade_text(language),
             reply_markup=premium_plus_upgrade_keyboard(language),
@@ -84,8 +91,11 @@ async def show_assistant_chats(
     telegram_id: int,
     assistant: str,
     search: str | None = None,
+    settings: Settings | None = None,
 ) -> None:
-    user, language = await ensure_assistant_access(message, db, telegram_id)
+    user, language = await ensure_assistant_access(
+        message, db, telegram_id, settings
+    )
     if not user:
         return
     chats = await db.get_assistant_chats(user.id, assistant, search)
@@ -116,6 +126,7 @@ async def start_new_assistant_chat(
     state: FSMContext,
     assistant: str,
     waiting_state,
+    settings: Settings | None = None,
 ) -> None:
     if not isinstance(callback.message, Message):
         await callback.answer()
@@ -124,6 +135,7 @@ async def start_new_assistant_chat(
         callback.message,
         db,
         callback.from_user.id,
+        settings,
     )
     if not user:
         await callback.answer()
@@ -155,6 +167,7 @@ async def open_assistant_chat(
     assistant: str,
     chat_id: int,
     waiting_state,
+    settings: Settings | None = None,
 ) -> None:
     if not isinstance(callback.message, Message):
         await callback.answer()
@@ -163,6 +176,7 @@ async def open_assistant_chat(
         callback.message,
         db,
         callback.from_user.id,
+        settings,
     )
     if not user:
         await callback.answer()
@@ -205,6 +219,7 @@ async def delete_assistant_chat(
     state: FSMContext,
     assistant: str,
     chat_id: int,
+    settings: Settings | None = None,
 ) -> None:
     if not isinstance(callback.message, Message):
         await callback.answer()
@@ -213,6 +228,7 @@ async def delete_assistant_chat(
         callback.message,
         db,
         callback.from_user.id,
+        settings,
     )
     if not user:
         await callback.answer()
@@ -232,6 +248,7 @@ async def delete_assistant_chat(
         db,
         callback.from_user.id,
         assistant,
+        settings=settings,
     )
 
 
@@ -241,6 +258,7 @@ async def begin_assistant_search(
     state: FSMContext,
     assistant: str,
     search_state,
+    settings: Settings | None = None,
 ) -> None:
     if not isinstance(callback.message, Message):
         await callback.answer()
@@ -249,6 +267,7 @@ async def begin_assistant_search(
         callback.message,
         db,
         callback.from_user.id,
+        settings,
     )
     if not user:
         await callback.answer()
@@ -270,6 +289,7 @@ async def handle_assistant_search(
     db: Database,
     state: FSMContext,
     assistant: str,
+    settings: Settings | None = None,
 ) -> None:
     if not message.from_user or not message.text:
         return
@@ -279,6 +299,7 @@ async def handle_assistant_search(
         message.from_user.id,
         assistant,
         message.text,
+        settings,
     )
     await state.clear()
 
@@ -289,6 +310,7 @@ async def handle_assistant_message(
     state: FSMContext,
     assistant: str,
     service: Any,
+    settings: Settings | None = None,
 ) -> None:
     if not message.from_user or not message.text:
         return
@@ -296,6 +318,7 @@ async def handle_assistant_message(
         message,
         db,
         message.from_user.id,
+        settings,
     )
     if not user:
         await state.clear()
@@ -311,6 +334,7 @@ async def handle_assistant_message(
             db,
             message.from_user.id,
             assistant,
+            settings=settings,
         )
         return
     chat_id = int(data["assistant_chat_id"])

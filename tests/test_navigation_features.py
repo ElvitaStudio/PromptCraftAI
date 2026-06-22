@@ -31,6 +31,7 @@ from app.keyboards import (
 from app.plans import FREE, PREMIUM, PRO, get_plan_limits
 from app.services.openai_service import OpenAIService
 from app.subscriptions import premium_text
+from app.assistant_workspace import assistant_upgrade_text
 
 
 class FakeState:
@@ -307,6 +308,28 @@ class PremiumSectionTests(unittest.TestCase):
         self.assertIn("payment:premium", buttons)
         self.assertIn("premium_plus:info", buttons)
         self.assertEqual(get_plan_limits(PRO).response_variants, 2)
+
+    def test_premium_plus_text_has_only_gpt_and_claude(self) -> None:
+        ru = premium_text("ru")
+        en = premium_text("en")
+        self.assertIn("• GPT Assistant", ru)
+        self.assertIn("• Claude Assistant", ru)
+        self.assertIn("Стоимость: 2499 Stars.", ru)
+        self.assertIn("Price: 2499 Stars.", en)
+        self.assertNotIn("Gemini Assistant", ru)
+        self.assertNotIn("Gemini Assistant", en)
+        self.assertEqual(
+            assistant_upgrade_text("ru"),
+            "💎 Premium Plus требуется для AI Assistants.\n\n"
+            "Доступны GPT и Claude с отдельной историей, независимым "
+            "контекстом, поиском и сохранением диалогов.",
+        )
+        self.assertEqual(
+            assistant_upgrade_text("en"),
+            "💎 Premium Plus is required for AI Assistants.\n\n"
+            "GPT and Claude are available with independent history, context, "
+            "chat search and conversation storage.",
+        )
 
 
 class PromptChatTests(unittest.IsolatedAsyncioTestCase):
