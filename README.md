@@ -57,7 +57,7 @@ result you need, and receive a polished prompt in Russian or English.
 - Prompt Chat requirements wizard for complex project ideas
 - Admin broadcasts with audience targeting, previews and delivery statistics
 - Localized news feed generated from confirmed broadcasts
-- Premium Plus AI Workspace with isolated GPT, Claude and Gemini assistants
+- Premium Plus AI Workspace with isolated GPT and Claude assistants
 
 ## Prompt templates
 
@@ -131,14 +131,13 @@ Prompt Chat supports Claude Code, Codex, Cursor, ChatGPT, Gemini and DeepSeek.
 ## Premium Plus AI Workspace
 
 Premium Plus is the first step toward turning PromptCraft AI into an AI
-Workspace. Its price is currently defined as an application constant and
-payments are intentionally not connected yet.
+Workspace. Its displayed price is `2499 Stars`; payments are intentionally
+not connected yet.
 
 The main menu includes **AI Assistants**:
 
 - GPT Assistant
 - Claude Assistant
-- Gemini Assistant
 
 Each assistant has an isolated workspace with:
 
@@ -148,10 +147,10 @@ Each assistant has an isolated workspace with:
 - search by chat title or message content;
 - chat deletion.
 
-GPT uses the existing OpenAI API configuration. Claude and Gemini expose
-provider-ready service interfaces and use localized safe stubs until native
-API keys are connected. Assistant history is stored separately from regular
-PromptCraft prompt history.
+GPT uses the existing OpenAI API configuration. Claude uses the Anthropic
+Messages API. Assistant history is stored separately from regular PromptCraft
+prompt history. A missing Anthropic key produces a localized configuration
+message without losing the user's saved message.
 
 ## Referral system
 
@@ -238,6 +237,8 @@ Create `.env` from `.env.example` and provide your own credentials:
 TELEGRAM_BOT_TOKEN=
 OPENAI_API_KEY=
 OPENAI_GENERATION_MODEL=gpt-4.1-mini
+ANTHROPIC_API_KEY=
+ANTHROPIC_MODEL=claude-sonnet-4-6
 ADMIN_IDS=123456789,987654321
 SUPPORT_USERNAME=PromptCraftSupport
 ```
@@ -247,6 +248,8 @@ SUPPORT_USERNAME=PromptCraftSupport
 | `TELEGRAM_BOT_TOKEN` | Token received from BotFather |
 | `OPENAI_API_KEY` | OpenAI API key |
 | `OPENAI_GENERATION_MODEL` | Model used for prompt generation |
+| `ANTHROPIC_API_KEY` | Anthropic API key for Claude Assistant |
+| `ANTHROPIC_MODEL` | Claude model used by Claude Assistant |
 | `ADMIN_IDS` | Comma-separated Telegram IDs with admin access |
 | `SUPPORT_USERNAME` | Telegram username for payment support |
 

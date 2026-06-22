@@ -37,4 +37,4 @@ class PlanTests(unittest.TestCase):
         self.assertTrue(has_premium_features(PREMIUM_PLUS))
         self.assertTrue(has_assistant_access(PREMIUM_PLUS))
         self.assertFalse(has_assistant_access(PREMIUM))
-        self.assertGreater(PREMIUM_PLUS_PRICE_STARS, 0)
+        self.assertEqual(PREMIUM_PLUS_PRICE_STARS, 2499)

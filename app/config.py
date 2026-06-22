@@ -15,6 +15,8 @@ class Settings:
     generation_model: str = "gpt-4.1-mini"
     admin_ids: frozenset[int] = frozenset()
     support_username: str = ""
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-sonnet-4-6"
 
 
 def parse_admin_ids(value: str) -> frozenset[int]:
@@ -57,4 +59,8 @@ def load_settings() -> Settings:
         ).strip(),
         admin_ids=parse_admin_ids(os.getenv("ADMIN_IDS", "")),
         support_username=os.getenv("SUPPORT_USERNAME", "").strip().lstrip("@"),
+        anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", "").strip(),
+        anthropic_model=os.getenv(
+            "ANTHROPIC_MODEL", "claude-sonnet-4-6"
+        ).strip(),
     )

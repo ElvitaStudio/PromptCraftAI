@@ -6,7 +6,6 @@ from app.database import AssistantChat
 ASSISTANT_LABELS = {
     "gpt": "🟢 GPT",
     "claude": "🟠 Claude",
-    "gemini": "🔵 Gemini",
 }
 
 
@@ -51,6 +50,12 @@ def assistant_chats_keyboard(
                     text="➕ Новый чат" if language == "ru" else "➕ New chat",
                     callback_data=f"assistant:{assistant}:new",
                 ),
+                InlineKeyboardButton(
+                    text="📜 История" if language == "ru" else "📜 History",
+                    callback_data=f"assistant:{assistant}:list",
+                ),
+            ],
+            [
                 InlineKeyboardButton(
                     text="🔎 Поиск" if language == "ru" else "🔎 Search",
                     callback_data=f"assistant:{assistant}:search",

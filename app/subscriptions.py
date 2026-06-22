@@ -29,7 +29,6 @@ def premium_text(language: str) -> str:
         f"• Стоимость: {PREMIUM_PLUS_PRICE_STARS} Stars (пока без оплаты)\n"
         "• GPT Assistant\n"
         "• Claude Assistant\n"
-        "• Gemini Assistant\n"
         "• Раздельная история и память чатов\n"
         "• Поиск и сохранение диалогов\n\n"
         "Выберите тариф:",
@@ -57,7 +56,6 @@ def premium_text(language: str) -> str:
         f"• Price: {PREMIUM_PLUS_PRICE_STARS} Stars (payments coming later)\n"
         "• GPT Assistant\n"
         "• Claude Assistant\n"
-        "• Gemini Assistant\n"
         "• Separate chat history and memory\n"
         "• Chat search and saved conversations\n\n"
         "Choose a plan:",

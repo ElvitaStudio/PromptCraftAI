@@ -42,14 +42,18 @@ The first public release of PromptCraft AI.
 
 ### Premium Plus AI Workspace
 
-- New Premium Plus plan with a constant placeholder price
-- GPT, Claude and Gemini assistant menu
+- Premium Plus displayed price updated to 2499 Stars
+- GPT and Claude assistant menu
 - Multiple saved chats for each assistant
 - Persistent isolated context and message history
 - Search by title and message content
 - Chat continuation and deletion
 - GPT integration through the existing OpenAI configuration
-- Provider-ready Claude and Gemini services with localized safe stubs
+- Real Anthropic Messages API integration for Claude Assistant
+- Configurable Claude model ID
+- Localized handling for missing provider API keys
+- Gemini Assistant removed from the active product while legacy database rows
+  remain compatible
 - Automatic SQLite migrations for assistant chats and messages
 
 ### Interface and settings

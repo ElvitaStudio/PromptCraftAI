@@ -5,7 +5,6 @@ from app.config import load_settings
 from app.database import Database
 from app.handlers import get_router
 from app.services.claude_service import ClaudeService
-from app.services.gemini_service import GeminiService
 from app.services.gpt_service import GPTService
 from app.services.openai_service import OpenAIService
 
@@ -47,8 +46,10 @@ async def run_bot() -> None:
         settings.openai_api_key,
         settings.generation_model,
     )
-    claude_service = ClaudeService()
-    gemini_service = GeminiService()
+    claude_service = ClaudeService(
+        settings.anthropic_api_key,
+        settings.anthropic_model,
+    )
     try:
         await set_commands(bot)
         await dispatcher.start_polling(
@@ -58,7 +59,6 @@ async def run_bot() -> None:
             openai_service=service,
             gpt_service=gpt_service,
             claude_service=claude_service,
-            gemini_service=gemini_service,
             bot_username=info.username,
         )
     finally:

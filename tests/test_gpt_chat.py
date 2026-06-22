@@ -173,3 +173,26 @@ class GPTChatTests(unittest.IsolatedAsyncioTestCase):
                 }
             self.assertIn("assistant_chats", tables)
             self.assertIn("assistant_messages", tables)
+
+    async def test_legacy_gemini_rows_remain_compatible(self) -> None:
+        with TemporaryDirectory() as temp:
+            db = Database(Path(temp) / "legacy-gemini.db")
+            await db.initialize()
+            user = await db.upsert_user(4, "legacy", "Legacy")
+            chat = await db.create_assistant_chat(
+                user.id, "gemini", "Legacy Gemini chat"
+            )
+            await db.add_assistant_message(
+                chat.id,
+                user.id,
+                "gemini",
+                "user",
+                "Preserved legacy message",
+            )
+            messages = await db.get_assistant_messages(
+                chat.id, user.id, "gemini"
+            )
+            self.assertEqual(
+                [item.content for item in messages],
+                ["Preserved legacy message"],
+            )

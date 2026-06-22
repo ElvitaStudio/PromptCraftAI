@@ -15,16 +15,17 @@ from app.catalog import tr
 from app.database import AssistantMessage, Database
 from app.plans import has_assistant_access
 from app.presentation import split_text
+from app.services.errors import AssistantConfigurationError
 
 
 def assistant_upgrade_text(language: str) -> str:
     return tr(
         language,
         "💎 Premium Plus требуется для AI Assistants.\n\n"
-        "Доступны GPT, Claude и Gemini с отдельной историей, "
+        "Доступны GPT и Claude с отдельной историей, "
         "контекстом, поиском и сохранением диалогов.",
         "💎 Premium Plus is required for AI Assistants.\n\n"
-        "GPT, Claude and Gemini include separate history, context, "
+        "GPT and Claude include separate history, context, "
         "search and saved conversations.",
     )
 
@@ -345,6 +346,22 @@ async def handle_assistant_message(
             ],
             language,
         )
+    except AssistantConfigurationError:
+        await message.answer(
+            tr(
+                language,
+                "API-ключ этого ассистента пока не настроен. "
+                "Сообщение сохранено.",
+                "This assistant API key is not configured yet. "
+                "Your message was saved.",
+            ),
+            reply_markup=assistant_chat_keyboard(
+                assistant,
+                chat_id,
+                language,
+            ),
+        )
+        return
     except Exception:
         await message.answer(
             tr(
