@@ -306,7 +306,7 @@ class PremiumSectionTests(unittest.TestCase):
         }
         self.assertIn("payment:pro", buttons)
         self.assertIn("payment:premium", buttons)
-        self.assertIn("premium_plus:info", buttons)
+        self.assertIn("payment:premium_plus", buttons)
         self.assertEqual(get_plan_limits(PRO).response_variants, 2)
 
     def test_premium_plus_text_has_only_gpt_and_claude(self) -> None:

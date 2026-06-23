@@ -112,8 +112,8 @@ def premium_plus_upgrade_keyboard(language: str) -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="💎 Premium Plus",
-                    callback_data="premium_plus:info",
+                    text="💎 Premium Plus — 2499 Stars",
+                    callback_data="payment:premium_plus",
                 )
             ],
             [

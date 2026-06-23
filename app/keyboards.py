@@ -383,8 +383,8 @@ def premium_keyboard(language: str = "en") -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
-                    text="💎 Premium Plus",
-                    callback_data="premium_plus:info",
+                    text="💎 Premium Plus — 2499 Stars",
+                    callback_data="payment:premium_plus",
                 )
             ],
             [

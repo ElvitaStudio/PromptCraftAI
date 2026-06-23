@@ -24,6 +24,10 @@ class ClaudeService:
         self.model = model
         self.client = client
 
+    @property
+    def is_configured(self) -> bool:
+        return bool(self.api_key)
+
     async def reply(
         self,
         messages: list[dict[str, str]],

@@ -9,6 +9,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
 from app.catalog import tr
+from app.ai_usage import release_model_request, reserve_model_request
 from app.database import Database
 from app.keyboards import prompt_actions_keyboard, prompt_chat_ai_keyboard
 from app.plans import get_plan_limits, has_premium_features
@@ -224,7 +225,8 @@ async def finish_prompt_chat(
             show_alert=True,
         )
         return
-    if not await db.reserve_request(user):
+    reservation = await reserve_model_request(db, user)
+    if not reservation.allowed:
         await callback.answer(
             tr(
                 user.language,
@@ -243,9 +245,13 @@ async def finish_prompt_chat(
         )
     )
     difficulty = user.last_difficulty
-    if difficulty == "expert" and not has_premium_features(user.plan):
+    if difficulty == "expert" and not has_premium_features(
+        user.plan, user.trial_active
+    ):
         difficulty = "advanced"
-    variants = get_plan_limits(user.plan).response_variants
+    variants = get_plan_limits(
+        user.entitlement_plan
+    ).response_variants
     try:
         result = await openai_service.generate_prompt_chat(
             {key: str(data[key]) for key in required},
@@ -281,7 +287,7 @@ async def finish_prompt_chat(
         await state.clear()
     except Exception:
         logger.exception("Prompt Chat failed for user %s", user.telegram_id)
-        await db.release_request(user)
+        await release_model_request(db, user, reservation)
         await status.edit_text(
             tr(
                 user.language,

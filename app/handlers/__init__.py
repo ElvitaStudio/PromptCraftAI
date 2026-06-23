@@ -13,12 +13,13 @@ from app.handlers.payments import router as payments_router
 from app.handlers.prompt_chat import router as prompt_chat_router
 from app.handlers.prompts import router as prompts_router
 from app.handlers.settings import router as settings_router
-from app.middlewares import UserProfileMiddleware
+from app.middlewares import TrialCallbackMiddleware, UserProfileMiddleware
 
 
 def get_router() -> Router:
     router = Router()
     router.message.outer_middleware(UserProfileMiddleware())
+    router.callback_query.outer_middleware(TrialCallbackMiddleware())
     router.include_router(admin_router)
     router.include_router(broadcast_router)
     router.include_router(commands_router)

@@ -58,6 +58,7 @@ result you need, and receive a polished prompt in Russian or English.
 - Admin broadcasts with audience targeting, previews and delivery statistics
 - Localized news feed generated from confirmed broadcasts
 - Premium Plus AI Workspace with isolated GPT and Claude assistants
+- One-time 24-hour Premium Plus Trial with 15 shared AI requests
 
 ## Prompt templates
 
@@ -80,8 +81,9 @@ for the task and applies the appropriate prompt structure automatically.
 | Free | 5/day | 5 | 1 variant, Simple and Advanced |
 | Pro — 199 Stars | 100/day | 30 | 2 variants, all categories, templates |
 | Premium — 399 Stars | Unlimited | 100 | Expert mode, 3 variants, all tools |
+| Premium Plus — 2499 Stars | Unlimited | 100 | Premium features plus GPT and Claude assistants |
 
-Pro and Premium subscriptions are issued for 30 days.
+Pro, Premium and Premium Plus subscriptions are issued for 30 days.
 
 ## Main menu
 
@@ -131,8 +133,8 @@ Prompt Chat supports Claude Code, Codex, Cursor, ChatGPT, Gemini and DeepSeek.
 ## Premium Plus AI Workspace
 
 Premium Plus is the first step toward turning PromptCraft AI into an AI
-Workspace. Its displayed price is `2499 Stars`; payments are intentionally
-not connected yet.
+Workspace. It costs `2499 Stars` and is activated for 30 days. A new payment
+extends an active Premium Plus subscription by another 30 days.
 
 The main menu includes **AI Assistants**:
 
@@ -149,6 +151,22 @@ Each assistant has an isolated workspace with:
 
 Users listed in `ADMIN_IDS` can access GPT and Claude assistants without an
 active Premium Plus subscription for testing and administration.
+
+## Premium Plus Trial
+
+Every account receives Premium Plus Trial once:
+
+- duration: 24 hours;
+- shared allowance: 15 model calls;
+- full Premium and Premium Plus feature access;
+- GPT Assistant, Claude Assistant, Prompt Chat, Create Prompt and Optimize
+  Prompt consume the shared allowance;
+- history, search, exports, templates, favorites, settings, news and
+  navigation do not consume it.
+
+New users receive Trial during their first `/start`. Existing accounts receive
+it on their next bot interaction. Trial activation and notification are
+persisted so the offer can never be granted automatically a second time.
 
 GPT uses the existing OpenAI API configuration. Claude uses the Anthropic
 Messages API. Assistant history is stored separately from regular PromptCraft
@@ -169,11 +187,14 @@ Digital subscriptions are sold through Telegram Stars:
 
 - Pro: `199 XTR`
 - Premium: `399 XTR`
+- Premium Plus: `2499 XTR`
 - Currency: `XTR`
 - Provider token: empty, as required for Telegram digital goods
 
 The bot validates pre-checkout payloads, stores successful payments and
 prevents repeated subscription activation for the same Telegram charge.
+Premium Plus payments activate the AI Workspace for 30 days or extend an
+existing Premium Plus subscription by 30 days.
 Payment support is available through `/paysupport`.
 
 ## Admin panel
@@ -184,10 +205,10 @@ The `/admin` command is available only to Telegram IDs configured in
 Administrators can:
 
 - view total users, 24-hour growth and Stars revenue;
-- view Free, Pro and Premium totals;
+- view Free, Pro, Premium and Premium Plus totals and sales;
 - browse users with pagination;
 - search by Telegram ID or username;
-- grant Free, Pro or Premium;
+- grant Free, Pro, Premium or Premium Plus;
 - add three days of Premium;
 - block and unblock users;
 - inspect referral statistics and relationships.

@@ -31,7 +31,7 @@ def premium_text(language: str) -> str:
         "• Раздельная история и память\n"
         "• Поиск и сохранение чатов\n\n"
         f"Стоимость: {PREMIUM_PLUS_PRICE_STARS} Stars.\n"
-        "Оплата будет подключена позже.\n\n"
+        "Срок подписки: 30 дней.\n\n"
         "Выберите тариф:",
         "👑 PromptCraft AI plans\n\n"
         "🆓 FREE\n"
@@ -59,6 +59,6 @@ def premium_text(language: str) -> str:
         "• Separate memory and history\n"
         "• Search and save chats\n\n"
         f"Price: {PREMIUM_PLUS_PRICE_STARS} Stars.\n"
-        "Payments will be enabled later.\n\n"
+        "Subscription period: 30 days.\n\n"
         "Choose a plan:",
     )

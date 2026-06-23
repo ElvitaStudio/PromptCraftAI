@@ -5,6 +5,7 @@ from app.assistant_keyboards import (
     assistants_menu_keyboard,
     premium_plus_upgrade_keyboard,
 )
+from app.keyboards import premium_keyboard
 from app.assistant_workspace import assistant_upgrade_text
 from app.catalog import tr
 from app.config import Settings
@@ -13,6 +14,7 @@ from app.plans import (
     PREMIUM_PLUS_PRICE_STARS,
     has_assistant_access,
 )
+from app.trial import trial_status_text
 
 
 router = Router(name="assistants")
@@ -34,10 +36,16 @@ async def assistants_menu(
         and callback.from_user.id in settings.admin_ids
     )
     if not user or (
-        not has_assistant_access(user.plan) and not is_admin
+        not has_assistant_access(user.plan, user.trial_active)
+        and not is_admin
     ):
+        text = (
+            trial_status_text(user, language)
+            if user and user.trial_granted
+            else assistant_upgrade_text(language)
+        )
         await callback.message.answer(
-            assistant_upgrade_text(language),
+            text,
             reply_markup=premium_plus_upgrade_keyboard(language),
         )
         await callback.answer()
@@ -67,14 +75,15 @@ async def premium_plus_info(callback: CallbackQuery, db: Database) -> None:
                 "• Раздельная история и память\n"
                 "• Поиск и сохранение чатов\n\n"
                 f"Стоимость: {PREMIUM_PLUS_PRICE_STARS} Stars.\n"
-                "Оплата будет подключена позже.",
+                "Срок подписки: 30 дней.",
                 "💎 Premium Plus\n\n"
                 "• GPT Assistant\n"
                 "• Claude Assistant\n"
                 "• Separate memory and history\n"
                 "• Search and save chats\n\n"
                 f"Price: {PREMIUM_PLUS_PRICE_STARS} Stars.\n"
-                "Payments will be enabled later.",
-            )
+                "Subscription period: 30 days.",
+            ),
+            reply_markup=premium_keyboard(language),
         )
     await callback.answer()

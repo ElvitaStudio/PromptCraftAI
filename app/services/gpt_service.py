@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from openai import AsyncOpenAI
 
+from app.services.errors import AssistantConfigurationError
+
 
 class GPTService:
     assistant = "gpt"
@@ -14,13 +16,19 @@ class GPTService:
         self.client = AsyncOpenAI(api_key=api_key) if api_key else None
         self.model = model
 
+    @property
+    def is_configured(self) -> bool:
+        return self.client is not None
+
     async def reply(
         self,
         messages: list[dict[str, str]],
         language: str,
     ) -> str:
         if self.client is None:
-            return self._stub(messages, language)
+            raise AssistantConfigurationError(
+                "OPENAI_API_KEY is not configured"
+            )
         transcript = "\n".join(
             f"{item['role']}: {item['content']}" for item in messages
         )
@@ -37,16 +45,3 @@ class GPTService:
         if not result:
             raise ValueError("GPT Assistant returned an empty response")
         return result
-
-    @staticmethod
-    def _stub(messages: list[dict[str, str]], language: str) -> str:
-        last = messages[-1]["content"] if messages else ""
-        if language == "en":
-            return (
-                "GPT Assistant stub is active. The conversation was saved "
-                f"with its context. Last message: {last}"
-            )
-        return (
-            "Активна заглушка GPT Assistant. Диалог и его контекст сохранены. "
-            f"Последнее сообщение: {last}"
-        )

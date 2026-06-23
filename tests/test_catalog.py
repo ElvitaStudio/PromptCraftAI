@@ -56,3 +56,7 @@ class CatalogTests(unittest.TestCase):
             buttons[1],
             ("👑 Premium — 399 Stars", "payment:premium"),
         )
+        self.assertEqual(
+            buttons[2],
+            ("💎 Premium Plus — 2499 Stars", "payment:premium_plus"),
+        )

@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from app.database import Database
-from app.plans import FREE, PREMIUM, PRO
+from app.plans import FREE, PREMIUM, PREMIUM_PLUS, PRO
 
 
 class DatabaseTests(unittest.IsolatedAsyncioTestCase):
@@ -134,6 +134,45 @@ class DatabaseTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first.plan_until, second.plan_until)
         payment = await self.db.get_payment_by_charge_id("charge-1")
         self.assertEqual(payment.amount, 199)
+
+    async def test_premium_plus_payment_activates_and_extends(self) -> None:
+        first_payment = dict(
+            telegram_id=100,
+            plan=PREMIUM_PLUS,
+            currency="XTR",
+            amount=2499,
+            payload="plan:premium_plus:100:1700000000",
+            telegram_payment_charge_id="plus-charge-1",
+            provider_payment_charge_id="",
+        )
+        self.assertTrue(await self.db.process_stars_payment(**first_payment))
+        first = await self.db.get_user_by_telegram_id(100)
+        self.assertEqual(first.plan, PREMIUM_PLUS)
+
+        second_payment = dict(first_payment)
+        second_payment.update(
+            payload="plan:premium_plus:100:1700000001",
+            telegram_payment_charge_id="plus-charge-2",
+        )
+        self.assertTrue(await self.db.process_stars_payment(**second_payment))
+        second = await self.db.get_user_by_telegram_id(100)
+        extension = (
+            datetime.fromisoformat(second.plan_until)
+            - datetime.fromisoformat(first.plan_until)
+        )
+        self.assertEqual(extension.days, 30)
+
+        self.assertFalse(await self.db.process_stars_payment(**second_payment))
+        duplicate = await self.db.get_user_by_telegram_id(100)
+        self.assertEqual(duplicate.plan_until, second.plan_until)
+        payment = await self.db.get_payment_by_charge_id("plus-charge-2")
+        self.assertEqual(payment.plan, PREMIUM_PLUS)
+        self.assertEqual(payment.amount, 2499)
+
+        stats = await self.db.get_admin_statistics()
+        self.assertEqual(stats.premium_plus_users, 1)
+        self.assertEqual(stats.premium_plus_sales, 2)
+        self.assertEqual(stats.revenue_stars, 4998)
 
     async def test_admin_search_and_stats(self) -> None:
         await self.db.upsert_user(222, "search_me", "Search")

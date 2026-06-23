@@ -13,6 +13,7 @@ from app.assistant_workspace import ensure_assistant_access
 from app.handlers.gpt_chat import GPTChatFlow, gpt_user_message
 from app.plans import FREE, PREMIUM_PLUS
 from app.services.gpt_service import GPTService
+from app.services.errors import AssistantConfigurationError
 
 
 class FakeState:
@@ -181,11 +182,12 @@ class GPTChatTests(unittest.IsolatedAsyncioTestCase):
             {"assistant:gpt:list", "assistant:claude:list"},
         )
 
-    async def test_gpt_stub_is_bilingual(self) -> None:
-        service = GPTService()
-        messages = [{"role": "user", "content": "Hello"}]
-        self.assertIn("stub", await service.reply(messages, "en"))
-        self.assertIn("заглушка", await service.reply(messages, "ru"))
+    async def test_gpt_requires_api_key(self) -> None:
+        with self.assertRaises(AssistantConfigurationError):
+            await GPTService().reply(
+                [{"role": "user", "content": "Hello"}],
+                "en",
+            )
 
     async def test_legacy_database_gets_assistant_tables(self) -> None:
         with TemporaryDirectory() as temp:

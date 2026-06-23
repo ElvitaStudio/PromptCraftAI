@@ -151,7 +151,9 @@ async def save_preference(callback: CallbackQuery, db: Database) -> None:
     }:
         kwargs["response_style"] = value
     elif kind == "difficulty" and value in DIFFICULTIES:
-        if value == "expert" and not has_premium_features(user.plan):
+        if value == "expert" and not has_premium_features(
+            user.plan, user.trial_active
+        ):
             await callback.answer(
                 tr(
                     language,

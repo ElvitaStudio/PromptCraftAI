@@ -11,12 +11,14 @@ from app.assistant_keyboards import (
     assistant_chats_keyboard,
     premium_plus_upgrade_keyboard,
 )
+from app.ai_usage import reserve_model_request
 from app.catalog import tr
 from app.config import Settings
 from app.database import AssistantMessage, Database
 from app.plans import has_assistant_access
 from app.presentation import split_text
 from app.services.errors import AssistantConfigurationError
+from app.trial import trial_status_text
 
 
 def assistant_upgrade_text(language: str) -> str:
@@ -75,10 +77,16 @@ async def ensure_assistant_access(
         settings is not None and telegram_id in settings.admin_ids
     )
     if not user or (
-        not has_assistant_access(user.plan) and not is_admin
+        not has_assistant_access(user.plan, user.trial_active)
+        and not is_admin
     ):
+        text = (
+            trial_status_text(user, language)
+            if user and user.trial_granted
+            else assistant_upgrade_text(language)
+        )
         await message.answer(
-            assistant_upgrade_text(language),
+            text,
             reply_markup=premium_plus_upgrade_keyboard(language),
         )
         return None, language
@@ -362,6 +370,49 @@ async def handle_assistant_message(
         user.id,
         assistant,
     )
+    is_configured = getattr(service, "is_configured", True)
+    if not is_configured:
+        try:
+            await service.reply(
+                [
+                    {"role": item.role, "content": item.content}
+                    for item in context
+                ],
+                language,
+            )
+        except AssistantConfigurationError:
+            await message.answer(
+                tr(
+                    language,
+                    "API-ключ этого ассистента пока не настроен. "
+                    "Сообщение сохранено.",
+                    "This assistant API key is not configured yet. "
+                    "Your message was saved.",
+                ),
+                reply_markup=assistant_chat_keyboard(
+                    assistant,
+                    chat_id,
+                    language,
+                ),
+            )
+            return
+    is_admin = bool(
+        settings is not None
+        and message.from_user.id in settings.admin_ids
+    )
+    if not is_admin:
+        reservation = await reserve_model_request(db, user)
+        if not reservation.allowed:
+            await message.answer(
+                tr(
+                    language,
+                    "🔒 Trial завершён или лимит AI-запросов исчерпан.\n\n"
+                    "Для продолжения оформите Premium Plus.",
+                    "🔒 Trial ended or the AI request limit was reached.\n\n"
+                    "Upgrade to Premium Plus to continue.",
+                )
+            )
+            return
     try:
         response = await service.reply(
             [

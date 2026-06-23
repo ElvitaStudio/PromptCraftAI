@@ -5,7 +5,7 @@ from aiogram.types import CallbackQuery, Message
 
 from app.catalog import tr
 from app.daily_prompts import prompt_of_the_day
-from app.database import Database
+from app.database import Database, RegistrationResult
 from app.handlers.history import show_history_page
 from app.keyboards import (
     favorites_keyboard,
@@ -25,6 +25,12 @@ from app.referrals import (
     parse_referral_payload,
 )
 from app.subscriptions import premium_text
+from app.trial import (
+    existing_user_trial_message,
+    infer_telegram_language,
+    new_user_trial_message,
+    trial_status_text,
+)
 
 
 router = Router(name="commands")
@@ -46,6 +52,32 @@ async def start_command(
         referred_by_telegram_id=parse_referral_payload(command.args),
         reward_days=REFERRAL_REWARD_DAYS,
     )
+    activate = getattr(db, "activate_trial_once", None)
+    activation = (
+        await activate(profile[0])
+        if activate is not None
+        else None
+    )
+    trial_language = (
+        result.user.language
+        or infer_telegram_language(message.from_user)
+    )
+    if (
+        activation is not None
+        and activation.notification_required
+    ):
+        await message.answer(
+            (
+                new_user_trial_message(trial_language)
+                if result.created
+                else existing_user_trial_message(trial_language)
+            )
+        )
+        result = RegistrationResult(
+            activation.user,
+            result.created,
+            result.referral_rewarded,
+        )
     if not result.user.language:
         await message.answer(
             "🌐 Выберите язык / Choose your language",
@@ -134,7 +166,7 @@ async def limits_command(message: Message, db: Database) -> None:
     limits = get_plan_limits(user.plan)
     unlimited = "∞"
     language = user.language or "ru"
-    await message.answer(
+    text = (
         tr(
             language,
             f"📊 Тариф: {limits.name}\n\n"
@@ -149,6 +181,10 @@ async def limits_command(message: Message, db: Database) -> None:
             f"📜 History: {limits.history_limit}",
         )
     )
+    trial = trial_status_text(user, language)
+    if trial:
+        text = f"{trial}\n\n━━━━━━━━━━━━\n\n{text}"
+    await message.answer(text)
 
 
 @router.message(Command("premium"))

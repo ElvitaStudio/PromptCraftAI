@@ -45,6 +45,21 @@ class PaymentTests(unittest.IsolatedAsyncioTestCase):
             399,
         )
 
+    async def test_premium_plus_invoice(self) -> None:
+        callback = SimpleNamespace(
+            data="payment:premium_plus",
+            from_user=SimpleNamespace(id=123),
+            answer=AsyncMock(),
+        )
+        bot = SimpleNamespace(send_invoice=AsyncMock())
+        await send_invoice(callback, bot)
+        kwargs = bot.send_invoice.await_args.kwargs
+        self.assertEqual(kwargs["prices"][0].amount, 2499)
+        self.assertEqual(
+            parse_payment_payload(kwargs["payload"])[0],
+            "premium_plus",
+        )
+
     async def test_pre_checkout_validation(self) -> None:
         bot = SimpleNamespace(answer_pre_checkout_query=AsyncMock())
         valid = SimpleNamespace(
@@ -68,3 +83,17 @@ class PaymentTests(unittest.IsolatedAsyncioTestCase):
         )
         await pre_checkout(invalid, bot)
         self.assertFalse(bot.answer_pre_checkout_query.await_args.kwargs["ok"])
+
+    async def test_premium_plus_pre_checkout_validation(self) -> None:
+        bot = SimpleNamespace(answer_pre_checkout_query=AsyncMock())
+        query = SimpleNamespace(
+            id="plus",
+            from_user=SimpleNamespace(id=123),
+            invoice_payload=build_payment_payload(
+                "premium_plus", 123, 1700000000
+            ),
+            currency="XTR",
+            total_amount=2499,
+        )
+        await pre_checkout(query, bot)
+        self.assertTrue(bot.answer_pre_checkout_query.await_args.kwargs["ok"])

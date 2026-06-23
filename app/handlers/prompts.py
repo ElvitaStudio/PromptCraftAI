@@ -8,6 +8,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import BufferedInputFile, CallbackQuery, Message
 
 from app.catalog import AI_MODELS, CATEGORIES, tr
+from app.ai_usage import release_model_request, reserve_model_request
 from app.daily_prompts import prompt_of_the_day
 from app.database import Database
 from app.exports import prompt_markdown, prompt_txt
@@ -103,7 +104,9 @@ async def _prepare_from_preferences(
     state: FSMContext,
 ) -> None:
     difficulty = user.last_difficulty
-    if difficulty == "expert" and not has_premium_features(user.plan):
+    if difficulty == "expert" and not has_premium_features(
+        user.plan, user.trial_active
+    ):
         difficulty = "advanced"
     await state.set_state(PromptFlow.waiting_for_task)
     await state.update_data(
@@ -113,7 +116,9 @@ async def _prepare_from_preferences(
         response_style=user.last_response_style,
         workflow=user.last_workflow,
         expert=difficulty == "expert",
-        variants=get_plan_limits(user.plan).response_variants,
+        variants=get_plan_limits(
+            user.entitlement_plan
+        ).response_variants,
     )
     await message.answer(
         tr(
@@ -323,12 +328,16 @@ async def choose_template(
         category=template.category,
         target_ai=template.target_ai,
         difficulty=(
-            "expert" if has_premium_features(user.plan) else "advanced"
+            "expert"
+            if has_premium_features(user.plan, user.trial_active)
+            else "advanced"
         ),
         response_style="professional",
         workflow="create",
-        expert=has_premium_features(user.plan),
-        variants=get_plan_limits(user.plan).response_variants,
+        expert=has_premium_features(user.plan, user.trial_active),
+        variants=get_plan_limits(
+            user.entitlement_plan
+        ).response_variants,
         template_code=template.code,
         template_structure=template.structure(user.language),
     )
@@ -338,7 +347,9 @@ async def choose_template(
         category=template.category,
         target_ai=template.target_ai,
         difficulty=(
-            "expert" if has_premium_features(user.plan) else "advanced"
+            "expert"
+            if has_premium_features(user.plan, user.trial_active)
+            else "advanced"
         ),
         response_style="professional",
         workflow="create",
@@ -404,7 +415,9 @@ async def choose_ai(
         await callback.answer("Access blocked", show_alert=True)
         return
     difficulty = user.last_difficulty
-    if difficulty == "expert" and not has_premium_features(user.plan):
+    if difficulty == "expert" and not has_premium_features(
+        user.plan, user.trial_active
+    ):
         difficulty = "advanced"
     await state.set_state(PromptFlow.waiting_for_task)
     await state.update_data(
@@ -414,7 +427,9 @@ async def choose_ai(
         response_style=user.last_response_style,
         workflow=user.last_workflow,
         expert=difficulty == "expert",
-        variants=get_plan_limits(user.plan).response_variants,
+        variants=get_plan_limits(
+            user.entitlement_plan
+        ).response_variants,
     )
     await _save_preferences(
         db,
@@ -510,7 +525,7 @@ async def choose_mode(
         return
     if (
         normalized_mode in {"expert", "variants"}
-        and not has_premium_features(user.plan)
+        and not has_premium_features(user.plan, user.trial_active)
     ):
         await callback.answer(
             tr(
@@ -532,7 +547,9 @@ async def choose_mode(
         variants=(
             3
             if normalized_mode == "variants"
-            else get_plan_limits(user.plan).response_variants
+            else get_plan_limits(
+                user.entitlement_plan
+            ).response_variants
         ),
     )
     await _save_preferences(
@@ -619,7 +636,8 @@ async def generate_prompt(
         await state.clear()
         await _show_categories(message, user.language)
         return
-    if not await db.reserve_request(user):
+    reservation = await reserve_model_request(db, user)
+    if not reservation.allowed:
         await message.answer(
             tr(
                 user.language,
@@ -689,7 +707,7 @@ async def generate_prompt(
         await state.clear()
     except Exception:
         logger.exception("Prompt generation failed for user %s", user.telegram_id)
-        await db.release_request(user)
+        await release_model_request(db, user, reservation)
         await status.edit_text(
             tr(
                 user.language,
@@ -764,7 +782,12 @@ async def handle_prompt_action(
     }:
         await callback.answer("Invalid action", show_alert=True)
         return
-    if action == "improve" and not await db.reserve_improvement(user):
+    action_reserved = False
+    if (
+        action == "improve"
+        and not user.trial_active
+        and not await db.reserve_improvement(user)
+    ):
         await callback.answer(
             tr(
                 user.language,
@@ -774,7 +797,13 @@ async def handle_prompt_action(
             show_alert=True,
         )
         return
-    if action != "improve" and not await db.reserve_request(user):
+    if action == "improve" and not user.trial_active:
+        action_reserved = True
+    if (
+        action != "improve"
+        and not user.trial_active
+        and not await db.reserve_request(user)
+    ):
         await callback.answer(
             tr(
                 user.language,
@@ -784,6 +813,8 @@ async def handle_prompt_action(
             show_alert=True,
         )
         return
+    if action != "improve" and not user.trial_active:
+        action_reserved = True
     await callback.answer()
     status = await callback.message.answer(
         tr(user.language, "✨ Обрабатываю…", "✨ Processing…")
@@ -822,9 +853,9 @@ async def handle_prompt_action(
             await callback.message.answer(chunk)
     except Exception:
         logger.exception("Prompt action %s failed", action)
-        if action == "improve":
+        if action_reserved and action == "improve":
             await db.release_improvement(user)
-        else:
+        elif action_reserved:
             await db.release_request(user)
         await status.edit_text("Error")
 

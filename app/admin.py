@@ -30,6 +30,7 @@ def dashboard_text(stats: AdminStatistics) -> str:
         f"💫 Доход: {stats.revenue_stars} Stars\n"
         f"⭐ Продаж Pro: {stats.pro_sales}\n"
         f"👑 Продаж Premium: {stats.premium_sales}\n"
+        f"💎 Продаж Premium Plus: {stats.premium_plus_sales}\n"
         f"🧩 Промптов всего: {stats.prompts_total}\n"
         f"📊 Промптов сегодня: {stats.prompts_today}\n\n"
         "Выберите действие:"

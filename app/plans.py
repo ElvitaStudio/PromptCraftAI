@@ -5,6 +5,8 @@ PRO = "pro"
 PREMIUM = "premium"
 PREMIUM_PLUS = "premium_plus"
 PREMIUM_PLUS_PRICE_STARS = 2499
+TRIAL_DURATION_HOURS = 24
+TRIAL_AI_REQUEST_LIMIT = 15
 VALID_PLANS = {FREE, PRO, PREMIUM, PREMIUM_PLUS}
 
 
@@ -30,9 +32,15 @@ def get_plan_limits(plan: str) -> PlanLimits:
     return PLAN_LIMITS.get(plan, PLAN_LIMITS[FREE])
 
 
-def has_premium_features(plan: str) -> bool:
-    return plan in {PREMIUM, PREMIUM_PLUS}
+def has_premium_features(
+    plan: str,
+    trial_active: bool = False,
+) -> bool:
+    return trial_active or plan in {PREMIUM, PREMIUM_PLUS}
 
 
-def has_assistant_access(plan: str) -> bool:
-    return plan == PREMIUM_PLUS
+def has_assistant_access(
+    plan: str,
+    trial_active: bool = False,
+) -> bool:
+    return trial_active or plan == PREMIUM_PLUS

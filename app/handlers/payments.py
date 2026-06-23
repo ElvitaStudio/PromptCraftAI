@@ -7,7 +7,7 @@ from aiogram.types import CallbackQuery, LabeledPrice, Message, PreCheckoutQuery
 
 from app.config import Settings
 from app.database import Database
-from app.plans import PREMIUM, PRO
+from app.plans import PREMIUM, PREMIUM_PLUS, PREMIUM_PLUS_PRICE_STARS, PRO
 from app.referrals import build_referral_link, invite_message
 
 
@@ -35,6 +35,12 @@ PLANS = {
         "PromptCraft AI Premium subscription for 30 days",
         "Premium 30 days",
         399,
+    ),
+    PREMIUM_PLUS: PaidPlan(
+        "PromptCraft AI Premium Plus",
+        "PromptCraft AI Premium Plus subscription for 30 days",
+        "Premium Plus 30 days",
+        PREMIUM_PLUS_PRICE_STARS,
     ),
 }
 
@@ -73,7 +79,9 @@ def _validate(payload: str, user_id: int, currency: str, amount: int) -> str | N
     return plan
 
 
-@router.callback_query(F.data.in_({"payment:pro", "payment:premium"}))
+@router.callback_query(
+    F.data.in_({"payment:pro", "payment:premium", "payment:premium_plus"})
+)
 async def send_invoice(callback: CallbackQuery, bot: Bot) -> None:
     plan = (callback.data or "").rsplit(":", 1)[-1]
     paid = PLANS[plan]
@@ -141,8 +149,9 @@ async def successful_payment(message: Message, db: Database) -> None:
         payment.provider_payment_charge_id,
     )
     if processed:
+        plan_name = PLANS[plan].title.removeprefix("PromptCraft AI ")
         await message.answer(
-            f"✅ {plan.title()} activated for 30 days."
+            f"✅ {plan_name} activated for 30 days."
         )
     else:
         await message.answer("ℹ️ Payment already processed.")

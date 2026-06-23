@@ -43,6 +43,9 @@ The first public release of PromptCraft AI.
 ### Premium Plus AI Workspace
 
 - Premium Plus displayed price updated to 2499 Stars
+- Telegram Stars payment enabled for 30-day Premium Plus subscriptions
+- Active Premium Plus subscriptions extend by 30 days after each payment
+- Payment records and Telegram charge ID idempotency cover Premium Plus
 - GPT and Claude assistant menu
 - Multiple saved chats for each assistant
 - Persistent isolated context and message history
@@ -53,6 +56,10 @@ The first public release of PromptCraft AI.
 - Configurable Claude model ID
 - Localized handling for missing provider API keys
 - `ADMIN_IDS` bypass for testing GPT and Claude assistants without Premium Plus
+- One-time Premium Plus Trial for new and existing users
+- 24-hour duration with one atomic 15-request model-call allowance
+- Full Premium and Premium Plus feature access during Trial
+- Localized activation, active-status and completion messages
 - Automatic SQLite migrations for assistant chats and messages
 
 ### Interface and settings
@@ -69,6 +76,7 @@ The first public release of PromptCraft AI.
 
 - Free, Pro and Premium usage limits
 - Telegram Stars invoices in `XTR`
+- Premium Plus invoice for `2499 XTR`
 - Idempotent payment processing
 - Personal referral links
 - Three-day Premium referral rewards
@@ -76,6 +84,7 @@ The first public release of PromptCraft AI.
 ### Administration
 
 - User, plan, growth and revenue statistics
+- Premium Plus user and sales statistics
 - Paginated user list
 - Search by Telegram ID and username
 - Plan assignment and temporary Premium rewards

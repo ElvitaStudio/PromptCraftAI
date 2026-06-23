@@ -7,10 +7,13 @@ from app.database import AdminStatistics, AdminUser
 
 class AdminTests(unittest.TestCase):
     def test_dashboard_metrics(self) -> None:
-        stats = AdminStatistics(10, 5, 3, 2, 4, 997, 3, 1, 50, 8)
+        stats = AdminStatistics(
+            10, 5, 3, 2, 4, 3496, 3, 1, 50, 8, 1, 1
+        )
         text = dashboard_text(stats)
-        self.assertIn("Доход: 997 Stars", text)
+        self.assertIn("Доход: 3496 Stars", text)
         self.assertIn("Продаж Pro: 3", text)
+        self.assertIn("Продаж Premium Plus: 1", text)
         callbacks = {
             button.callback_data
             for row in dashboard_keyboard().inline_keyboard

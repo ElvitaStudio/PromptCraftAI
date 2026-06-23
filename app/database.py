@@ -15,6 +15,8 @@ from app.plans import (
     PRO,
     VALID_PLANS,
     get_plan_limits,
+    TRIAL_AI_REQUEST_LIMIT,
+    TRIAL_DURATION_HOURS,
 )
 from app.prompt_profiles import (
     DIFFICULTIES,
@@ -41,6 +43,38 @@ class User:
     last_response_style: str = "professional"
     last_workflow: str = "create"
     export_format: str = "txt"
+    trial_granted: bool = False
+    trial_started_at: str | None = None
+    trial_expires_at: str | None = None
+    trial_requests_used: int = 0
+    trial_notification_sent: bool = False
+
+    @property
+    def trial_active(self) -> bool:
+        if (
+            not self.trial_granted
+            or not self.trial_expires_at
+            or self.trial_requests_used >= TRIAL_AI_REQUEST_LIMIT
+        ):
+            return False
+        try:
+            expires = datetime.fromisoformat(self.trial_expires_at)
+        except ValueError:
+            return False
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        return expires > datetime.now(timezone.utc)
+
+    @property
+    def trial_remaining(self) -> int:
+        return max(
+            0,
+            TRIAL_AI_REQUEST_LIMIT - self.trial_requests_used,
+        )
+
+    @property
+    def entitlement_plan(self) -> str:
+        return PREMIUM_PLUS if self.trial_active else self.plan
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +123,19 @@ class RegistrationResult:
     user: User
     created: bool
     referral_rewarded: bool
+
+
+@dataclass(frozen=True, slots=True)
+class TrialActivation:
+    user: User
+    activated_now: bool
+    notification_required: bool
+
+
+@dataclass(frozen=True, slots=True)
+class AIRequestReservation:
+    allowed: bool
+    source: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -188,6 +235,7 @@ class AdminStatistics:
     prompts_total: int
     prompts_today: int
     premium_plus_users: int = 0
+    premium_plus_sales: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -239,6 +287,11 @@ class Database:
                     last_response_style TEXT NOT NULL DEFAULT 'professional',
                     last_workflow TEXT NOT NULL DEFAULT 'create',
                     export_format TEXT NOT NULL DEFAULT 'txt',
+                    trial_granted INTEGER NOT NULL DEFAULT 0,
+                    trial_started_at TEXT,
+                    trial_expires_at TEXT,
+                    trial_requests_used INTEGER NOT NULL DEFAULT 0,
+                    trial_notification_sent INTEGER NOT NULL DEFAULT 0,
                     created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
                     FOREIGN KEY (referred_by) REFERENCES users(id)
                 );
@@ -356,6 +409,11 @@ class Database:
                 "last_workflow": "TEXT NOT NULL DEFAULT 'create'",
                 "export_format": "TEXT NOT NULL DEFAULT 'txt'",
                 "last_active_at": "TEXT",
+                "trial_granted": "INTEGER NOT NULL DEFAULT 0",
+                "trial_started_at": "TEXT",
+                "trial_expires_at": "TEXT",
+                "trial_requests_used": "INTEGER NOT NULL DEFAULT 0",
+                "trial_notification_sent": "INTEGER NOT NULL DEFAULT 0",
             }
             for name, definition in preference_columns.items():
                 if name not in user_columns:
@@ -425,6 +483,11 @@ class Database:
             last_response_style=row["last_response_style"],
             last_workflow=row["last_workflow"],
             export_format=row["export_format"],
+            trial_granted=bool(row["trial_granted"]),
+            trial_started_at=row["trial_started_at"],
+            trial_expires_at=row["trial_expires_at"],
+            trial_requests_used=int(row["trial_requests_used"]),
+            trial_notification_sent=bool(row["trial_notification_sent"]),
         )
 
     async def register_user(
@@ -536,6 +599,126 @@ class Database:
             )
             await db.commit()
 
+    async def activate_trial_once(
+        self,
+        telegram_id: int,
+    ) -> TrialActivation | None:
+        now_dt = datetime.now(timezone.utc)
+        now = now_dt.isoformat()
+        expires = (
+            now_dt + timedelta(hours=TRIAL_DURATION_HOURS)
+        ).isoformat()
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("BEGIN IMMEDIATE")
+            row = await (
+                await db.execute(
+                    "SELECT * FROM users WHERE telegram_id=?",
+                    (telegram_id,),
+                )
+            ).fetchone()
+            if row is None:
+                await db.rollback()
+                return None
+            activated_now = not bool(row["trial_granted"])
+            notification_required = (
+                activated_now
+                or not bool(row["trial_notification_sent"])
+            )
+            if activated_now:
+                await db.execute(
+                    "UPDATE users SET trial_granted=1, "
+                    "trial_started_at=?, trial_expires_at=?, "
+                    "trial_requests_used=0, trial_notification_sent=1, "
+                    "updated_at=? WHERE id=?",
+                    (now, expires, now, row["id"]),
+                )
+            elif notification_required:
+                await db.execute(
+                    "UPDATE users SET trial_notification_sent=1, "
+                    "updated_at=? WHERE id=?",
+                    (now, row["id"]),
+                )
+            row = await (
+                await db.execute(
+                    "SELECT * FROM users WHERE id=?", (row["id"],)
+                )
+            ).fetchone()
+            await db.commit()
+        return TrialActivation(
+            self._row_to_user(row),
+            activated_now,
+            notification_required,
+        )
+
+    async def reserve_ai_request(
+        self,
+        user: User,
+    ) -> AIRequestReservation:
+        if user.is_blocked:
+            return AIRequestReservation(False)
+        now_dt = datetime.now(timezone.utc)
+        now = now_dt.isoformat()
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            await db.execute("BEGIN IMMEDIATE")
+            row = await (
+                await db.execute(
+                    "SELECT trial_granted, trial_expires_at, "
+                    "trial_requests_used FROM users WHERE id=?",
+                    (user.id,),
+                )
+            ).fetchone()
+            if row:
+                expires_at = row["trial_expires_at"]
+                active = False
+                if row["trial_granted"] and expires_at:
+                    try:
+                        expires = datetime.fromisoformat(expires_at)
+                        if expires.tzinfo is None:
+                            expires = expires.replace(tzinfo=timezone.utc)
+                        active = (
+                            expires > now_dt
+                            and int(row["trial_requests_used"])
+                            < TRIAL_AI_REQUEST_LIMIT
+                        )
+                    except ValueError:
+                        active = False
+                if active:
+                    await db.execute(
+                        "UPDATE users SET "
+                        "trial_requests_used=trial_requests_used+1, "
+                        "updated_at=? WHERE id=?",
+                        (now, user.id),
+                    )
+                    await db.commit()
+                    return AIRequestReservation(True, "trial")
+            await db.rollback()
+        allowed = await self.reserve_request(user)
+        return AIRequestReservation(
+            allowed,
+            "plan" if allowed else None,
+        )
+
+    async def release_ai_request(
+        self,
+        user: User,
+        reservation: AIRequestReservation,
+    ) -> None:
+        if not reservation.allowed:
+            return
+        if reservation.source == "trial":
+            async with self._connect() as db:
+                await db.execute(
+                    "UPDATE users SET trial_requests_used="
+                    "MAX(trial_requests_used-1, 0), updated_at=? "
+                    "WHERE id=?",
+                    (self._now(), user.id),
+                )
+                await db.commit()
+        elif reservation.source == "plan":
+            await self.release_request(user)
+
     async def update_user_preferences(
         self,
         telegram_id: int,
@@ -642,6 +825,8 @@ class Database:
         await self._release_daily("request_usage", user)
 
     async def reserve_improvement(self, user: User) -> bool:
+        if user.trial_active:
+            return True
         return await self._reserve_daily(
             "improvement_usage", user,
             get_plan_limits(user.plan).improvements_daily_limit,
@@ -670,7 +855,9 @@ class Database:
     async def get_improvement_usage(self, user: User) -> Usage:
         return await self._usage(
             "improvement_usage", user,
-            get_plan_limits(user.plan).improvements_daily_limit,
+            get_plan_limits(
+                user.entitlement_plan
+            ).improvements_daily_limit,
         )
 
     async def save_prompt(
@@ -719,7 +906,12 @@ class Database:
                 await db.execute(
                     "SELECT * FROM prompts WHERE user_id=? "
                     "ORDER BY created_at DESC, id DESC LIMIT ?",
-                    (user.id, get_plan_limits(user.plan).history_limit),
+                    (
+                        user.id,
+                        get_plan_limits(
+                            user.entitlement_plan
+                        ).history_limit,
+                    ),
                 )
             ).fetchall()
         return [self._prompt(row) for row in rows]
@@ -730,7 +922,9 @@ class Database:
         page: int,
         page_size: int = 5,
     ) -> PromptHistoryPage:
-        history_limit = get_plan_limits(user.plan).history_limit
+        history_limit = get_plan_limits(
+            user.entitlement_plan
+        ).history_limit
         async with self._connect() as db:
             db.row_factory = aiosqlite.Row
             total_row = await (
@@ -835,7 +1029,7 @@ class Database:
         payload: str, telegram_payment_charge_id: str,
         provider_payment_charge_id: str, duration_days: int = 30,
     ) -> bool:
-        if plan not in {PRO, PREMIUM} or currency != "XTR":
+        if plan not in {PRO, PREMIUM, PREMIUM_PLUS} or currency != "XTR":
             raise ValueError("Invalid paid plan or currency")
         async with self._connect() as db:
             db.row_factory = aiosqlite.Row
@@ -1216,7 +1410,9 @@ class Database:
             pay = await (await db.execute(
                 "SELECT COALESCE(SUM(amount),0) revenue, "
                 "SUM(CASE WHEN plan='pro' THEN 1 ELSE 0 END) pro_sales, "
-                "SUM(CASE WHEN plan='premium' THEN 1 ELSE 0 END) premium_sales "
+                "SUM(CASE WHEN plan='premium' THEN 1 ELSE 0 END) premium_sales, "
+                "SUM(CASE WHEN plan='premium_plus' THEN 1 ELSE 0 END) "
+                "premium_plus_sales "
                 "FROM payments WHERE currency='XTR'"
             )).fetchone()
             total = (await (await db.execute(
@@ -1234,6 +1430,7 @@ class Database:
             int(new_users), int(pay["revenue"] or 0),
             int(pay["pro_sales"] or 0), int(pay["premium_sales"] or 0),
             int(total), int(today), counts[PREMIUM_PLUS],
+            int(pay["premium_plus_sales"] or 0),
         )
 
     async def get_admin_users_page(
